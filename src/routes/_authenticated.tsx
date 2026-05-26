@@ -26,12 +26,23 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      if (user) {
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+          .then(({ data }) => setProfile(data));
+      }
+    });
   }, []);
 
   const handleLogout = async () => {
@@ -75,8 +86,11 @@ function AuthenticatedLayout() {
                 <AvatarImage src={user?.user_metadata?.avatar_url} />
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 truncate text-xs">
-                <p className="font-medium truncate">{user?.email}</p>
+              <div className="flex-1 truncate">
+                <p className="font-medium truncate text-xs">{user?.email}</p>
+                {profile?.role === 'admin' && (
+                  <span className="text-[10px] bg-[#f97316] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Admin</span>
+                )}
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout} className="text-gray-400 hover:text-white">
                 <LogOut size={18} />
