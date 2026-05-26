@@ -86,8 +86,11 @@ function AuthenticatedLayout() {
                 <AvatarImage src={user?.user_metadata?.avatar_url} />
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 truncate text-xs">
-                <p className="font-medium truncate">{user?.email}</p>
+              <div className="flex-1 truncate">
+                <p className="font-medium truncate text-xs">{user?.email}</p>
+                {profile?.role === 'admin' && (
+                  <span className="text-[10px] bg-[#f97316] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Admin</span>
+                )}
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout} className="text-gray-400 hover:text-white">
                 <LogOut size={18} />
