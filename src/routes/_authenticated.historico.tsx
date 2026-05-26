@@ -10,6 +10,8 @@ import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, Clipboar
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useServerFn } from '@tanstack/react-start';
+
 
 export const Route = createFileRoute('/_authenticated/historico')({
   component: HistoryPage,
