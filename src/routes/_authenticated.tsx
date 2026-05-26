@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Link, useNavigate, useRouter } from '@tanstack/react-router';
+import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X } from 'lucide-react';
@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export const Route = createFileRoute('/_authenticated')({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('Unauthorized');
@@ -23,6 +23,7 @@ export const Route = createFileRoute('/_authenticated')({
   },
   component: AuthenticatedLayout,
 });
+
 
 function AuthenticatedLayout() {
   const [user, setUser] = useState<any>(null);
