@@ -127,8 +127,8 @@ function AuthenticatedLayout() {
           <div className="p-4 border-t border-[#22223a]">
             <div className="flex items-center gap-3 px-4 py-3">
               <Avatar>
-                <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
+                <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 truncate">
                 <p className="font-medium truncate text-xs">{user?.email}</p>
