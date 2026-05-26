@@ -30,7 +30,12 @@ function SignupPage() {
     });
 
     if (error) {
-      toast.error(error.message);
+      if (error.message.includes('already registered')) {
+        toast.error('Este e-mail já está cadastrado. Tente fazer login.');
+        navigate({ to: '/auth/login' });
+      } else {
+        toast.error(error.message);
+      }
       setLoading(false);
       return;
     }
