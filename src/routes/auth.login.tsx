@@ -16,26 +16,48 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [authHint, setAuthHint] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthHint('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast.error(error.message);
+      if (error.message.toLowerCase().includes('invalid login credentials')) {
+        const message = 'Não foi possível entrar com essa senha. Se essa conta foi criada pelo Google, use o botão “Entrar com Google”.';
+        setAuthHint(message);
+        toast.error(message);
+      } else {
+        toast.error(error.message);
+      }
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate({ to: '/' });
+      navigate({ to: '/', replace: true });
     }
     setLoading(false);
   };
 
   const handleGoogleLogin = async () => {
+    setLoading(true);
+    setAuthHint('');
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: window.location.origin,
+      extraParams: {
+        prompt: 'select_account',
+        ...(email ? { login_hint: email } : {}),
+      },
     });
-    if (result.error) toast.error(result.error.message);
+    if (result.error) {
+      toast.error(result.error.message);
+      setLoading(false);
+      return;
+    }
+    if (result.redirected) return;
+    toast.success('Login com Google realizado com sucesso!');
+    navigate({ to: '/', replace: true });
+    setLoading(false);
   };
 
   return (
@@ -74,6 +96,11 @@ function LoginPage() {
             <Button type="submit" className="w-full bg-[#f97316] hover:bg-[#d96314]" disabled={loading}>
               {loading ? 'Carregando...' : 'Entrar'}
             </Button>
+            {authHint && (
+              <p className="rounded-xl border border-[#f97316]/40 bg-[#f97316]/10 px-4 py-3 text-sm text-[#fed7aa]">
+                {authHint}
+              </p>
+            )}
           </form>
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -83,8 +110,8 @@ function LoginPage() {
               <span className="bg-[#111128] px-2 text-gray-400">Ou continue com</span>
             </div>
           </div>
-          <Button variant="outline" className="w-full border-[#22223a] bg-transparent text-white hover:bg-[#22223a]" onClick={handleGoogleLogin}>
-            Google
+          <Button type="button" variant="outline" className="w-full border-[#22223a] bg-transparent text-white hover:bg-[#22223a]" onClick={handleGoogleLogin} disabled={loading}>
+            Entrar com Google
           </Button>
         </CardContent>
         <CardFooter className="flex flex-wrap items-center justify-center gap-2">
