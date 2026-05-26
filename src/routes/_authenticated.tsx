@@ -9,8 +9,16 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
+    // No SSR, we only check authentication on the client side for now
+    // to avoid redirection loops during OAuth callback.
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // If no session and no hash (OAuth callback), redirect to login
+    if (!session && !window.location.hash.includes('access_token')) {
       throw redirect({ to: '/auth/login' });
     }
   },
@@ -25,18 +33,61 @@ function AuthenticatedLayout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
       if (user) {
-        supabase
+        const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
+          .maybeSingle();
+        
+        if (profileData) {
+          setProfile(profileData);
+        } else {
+          // If profile doesn't exist, create it (fallback if trigger failed)
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .upsert({ 
+              id: user.id, 
+              email: user.email,
+              role: user.email === 'lula1973@gmail.com' ? 'admin' : 'user'
+            })
+            .select()
+            .single();
+          setProfile(newProfile);
+        }
+      } else {
+        // Double check on client side if session is really gone
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session && !window.location.hash.includes('access_token')) {
+          navigate({ to: '/auth/login' });
+        }
+      }
+    };
+
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
           .single()
           .then(({ data }) => setProfile(data));
+      } else if (!window.location.hash.includes('access_token')) {
+        setUser(null);
+        setProfile(null);
+        navigate({ to: '/auth/login' });
       }
     });
-  }, []);
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
