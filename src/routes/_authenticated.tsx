@@ -164,9 +164,17 @@ function AuthenticatedLayout() {
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
               <span className="text-[#f97316]">⚡</span> Precify3D
             </h1>
-            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-              {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/perfil">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px]">{profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                </Avatar>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+              </Button>
+            </div>
           </header>
         )}
         <div className="p-4 md:p-8 flex-1">
