@@ -190,7 +190,7 @@ function CalculatorPage() {
               onDrop={e => { e.preventDefault(); handleSTLFile(e.dataTransfer.files[0]); }}
               onClick={() => fileInputRef.current?.click()}
             >
-              <input type="file" ref={fileInputRef} className="hidden" accept=".stl" onChange={e => handleSTLFile(e.target.files[0]!)} />
+              <input type="file" ref={fileInputRef} className="hidden" accept=".stl" onChange={e => { if (e.target.files?.[0]) handleSTLFile(e.target.files[0]); }} />
               {stlLoading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="animate-spin text-[#f97316]" size={32} />
