@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Outlet, Link, useNavigate, redirect } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
 import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X } from 'lucide-react';
@@ -11,15 +11,8 @@ export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      throw new Error('Unauthorized');
+      throw redirect({ to: '/auth/login' });
     }
-  },
-  errorComponent: ({ error }) => {
-    if (error.message === 'Unauthorized') {
-      window.location.href = '/auth/login';
-      return null;
-    }
-    return <div>Error: {error.message}</div>;
   },
   component: AuthenticatedLayout,
 });
