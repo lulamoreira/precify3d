@@ -11,21 +11,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
-import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, STLData } from '@/lib/stl-utils';
-import { calculatePricing, PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Trash2, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon } from 'lucide-react';
+import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, type STLData } from '@/lib/stl-utils';
+import { calculatePricing, type PricingResult } from '@/lib/pricing-utils';
+import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useServerFn } from '@tanstack/react-start';
 
 export const Route = createFileRoute('/_authenticated/calculadora')({
   component: CalculatorPage,
 });
 
-
-
 function CalculatorPage() {
   const queryClient = useQueryClient();
-  const { data: materials } = useQuery({ queryKey: ['materials'], queryFn: () => getMaterials() });
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: () => getUserSettings() });
+  const getMaterialsFn = useServerFn(getMaterials);
+  const getUserSettingsFn = useServerFn(getUserSettings);
+  const saveQuoteFn = useServerFn(saveQuote);
+
+  const { data: materials } = useQuery({ queryKey: ['materials'], queryFn: () => getMaterialsFn() });
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: () => getUserSettingsFn() });
 
   const [form, setForm] = useState({
     client: '',
@@ -50,7 +53,7 @@ function CalculatorPage() {
   const [result, setResult] = useState<PricingResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentMat = materials?.find(m => m.id === form.materialId);
+  const currentMat = materials?.find((m: any) => m.id === form.materialId);
   const density = currentMat ? getMaterialDensity(currentMat.name) : 1.24;
 
   useEffect(() => {
@@ -131,7 +134,6 @@ function CalculatorPage() {
     onError: (err: any) => toast.error('Erro ao salvar orçamento: ' + err.message)
   });
 
-
   const handleSave = () => {
     if (!result) return;
     mutation.mutate({
@@ -182,7 +184,6 @@ function CalculatorPage() {
             <CardDescription className="text-gray-400">Preencha os dados abaixo para calcular o preço ideal.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Drop Zone */}
             <div 
               className={cn(
                 "border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group",
@@ -210,26 +211,23 @@ function CalculatorPage() {
                     <Upload size={24} />
                   </div>
                   <div>
-                    <p className="font-medium">Arraste o STL ou clique para selecionar</p>
+                    <p className="font-medium text-white">Arraste o STL ou clique para selecionar</p>
                     <p className="text-xs text-gray-500 mt-1">Peso e dimensões preenchidos automaticamente</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* STL Analysis Panel */}
             {stlData && (
               <div className="bg-[#07071a] border border-[#22223a] rounded-xl p-4 space-y-4 animate-fadeIn">
-                <div className="flex items-center justify-between">
-                   <h3 className="text-sm font-bold flex items-center gap-2">
-                     <Info size={14} className="text-[#f97316]" />
-                     Análise de Geometria
-                   </h3>
-                </div>
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Info size={14} className="text-[#f97316]" />
+                  Análise de Geometria
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <GeoStat label="Dimensões" value={`${stlData.dimX.toFixed(0)}x${stlData.dimY.toFixed(0)}x${stlData.dimZ.toFixed(0)}mm`} />
                   <GeoStat label="Volume" value={`${stlData.volCm3.toFixed(1)} cm³`} />
-                  <GeoStat label="Área" value={`${(stlData.volCm3 * 6).toFixed(0)} cm²`} /> {/* Area is placeholder, stl-utils simplified */}
+                  <GeoStat label="Área" value={`${(stlData.volCm3 * 6).toFixed(0)} cm²`} />
                   <GeoStat label="Peso Est." value={`${calcWeightFromSTL(stlData.volCm3, density, infill)}g`} accent />
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -239,16 +237,15 @@ function CalculatorPage() {
                 </div>
                 <div className="space-y-3 pt-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-400">Ajustar Infill (Preenchimento):</span>
+                    <span className="text-gray-400">Ajustar Infill:</span>
                     <span className="font-bold text-[#f97316]">{infill}%</span>
                   </div>
                   <Slider value={[infill]} min={5} max={100} step={5} onValueChange={v => setInfill(v[0])} className="accent-[#f97316]" />
-                  <p className="text-[10px] text-gray-500 text-center">Peso atualizado automaticamente no formulário</p>
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Cliente</Label>
                 <Input placeholder="Ex: João Silva" value={form.client} onChange={e => setForm({...form, client: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
@@ -259,7 +256,7 @@ function CalculatorPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Material</Label>
                 <Select value={form.materialId} onValueChange={v => setForm({...form, materialId: v})}>
@@ -267,7 +264,7 @@ function CalculatorPage() {
                     <SelectValue placeholder="Selecione o material" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#111128] border-[#22223a] text-white">
-                    {materials?.map(m => (
+                    {materials?.map((m: any) => (
                       <SelectItem key={m.id} value={m.id}>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
@@ -284,7 +281,7 @@ function CalculatorPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Tempo de Impressão</Label>
                 <div className="flex gap-2">
@@ -301,7 +298,7 @@ function CalculatorPage() {
             <Separator className="bg-[#22223a]" />
 
             <div className="space-y-3">
-              <Label>Marketplace de Venda</Label>
+              <Label className="text-white">Marketplace de Venda</Label>
               <div className="grid grid-cols-3 gap-2">
                 <MarketBtn active={form.platformName === 'none'} onClick={() => handleMarketplace('none')} icon={<Store size={16} />} label="Loja Própria" />
                 <MarketBtn active={form.platformName.startsWith('ml')} onClick={() => handleMarketplace('ml_classico')} icon={<ShoppingCart size={16} />} label="M. Livre" activeColor="bg-yellow-500" />
@@ -310,30 +307,30 @@ function CalculatorPage() {
               
               {form.platformName.startsWith('ml') && (
                 <div className="flex gap-2 animate-fadeIn">
-                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a]", form.platformName === 'ml_classico' && "bg-yellow-500/20 border-yellow-500 text-yellow-500")} onClick={() => handleMarketplace('ml_classico')}>Clássico (12%)</Button>
-                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a]", form.platformName === 'ml_premium' && "bg-yellow-500/20 border-yellow-500 text-yellow-500")} onClick={() => handleMarketplace('ml_premium')}>Premium (16%)</Button>
+                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a] text-white", form.platformName === 'ml_classico' && "bg-yellow-500/20 border-yellow-500 text-yellow-500")} onClick={() => handleMarketplace('ml_classico')}>Clássico (12%)</Button>
+                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a] text-white", form.platformName === 'ml_premium' && "bg-yellow-500/20 border-yellow-500 text-yellow-500")} onClick={() => handleMarketplace('ml_premium')}>Premium (16%)</Button>
                 </div>
               )}
 
               {form.platformName.startsWith('shopee') && (
                 <div className="flex gap-2 animate-fadeIn">
-                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a]", form.platformName === 'shopee_padrao' && "bg-red-500/20 border-red-500 text-red-500")} onClick={() => handleMarketplace('shopee_padrao')}>Padrão (14%)</Button>
-                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a]", form.platformName === 'shopee_ads' && "bg-red-500/20 border-red-500 text-red-500")} onClick={() => handleMarketplace('shopee_ads')}>Com Ads (16%)</Button>
+                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a] text-white", form.platformName === 'shopee_padrao' && "bg-red-500/20 border-red-500 text-red-500")} onClick={() => handleMarketplace('shopee_padrao')}>Padrão (14%)</Button>
+                   <Button variant="outline" size="sm" className={cn("flex-1 text-xs border-[#22223a] text-white", form.platformName === 'shopee_ads' && "bg-red-500/20 border-red-500 text-red-500")} onClick={() => handleMarketplace('shopee_ads')}>Com Ads (16%)</Button>
                 </div>
               )}
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Label>Taxa (%)</Label>
-                  <Input type="number" value={form.platformFee} onChange={e => setForm({...form, platformFee: e.target.value})} className="w-20 bg-[#07071a] border-[#22223a] h-8" />
+                  <Label className="text-white">Taxa (%)</Label>
+                  <Input type="number" value={form.platformFee} onChange={e => setForm({...form, platformFee: e.target.value})} className="w-20 bg-[#07071a] border-[#22223a] h-8 text-white" />
                 </div>
-                <a href="#" className="text-[10px] text-gray-500 flex items-center gap-1 hover:text-[#f97316]">
+                <a href="https://vendedores.mercadolivre.com.br/ajuda/custos-de-vender-um-produto_1912" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-500 flex items-center gap-1 hover:text-[#f97316]">
                   Verificar taxas oficiais <ExternalLink size={10} />
                 </a>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Falha (%)</Label>
                 <Input type="number" value={form.failurePct} onChange={e => setForm({...form, failurePct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
@@ -348,16 +345,16 @@ function CalculatorPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 text-white">
               <Label>Observações</Label>
               <Textarea placeholder="Notas sobre o pedido..." value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
             </div>
 
             <div className="flex gap-4 pt-4">
-               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a]" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '' }); setStlData(null); setResult(null); }}>
+               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '' }); setStlData(null); setResult(null); }}>
                  Limpar
                </Button>
-               <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2" onClick={calculate}>
+               <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" onClick={calculate}>
                  <Zap size={18} />
                  Calcular Preço
                </Button>
@@ -371,7 +368,7 @@ function CalculatorPage() {
           <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-fadeIn border-l-4 border-l-[#f97316]">
             <CardHeader>
               <CardTitle>Resultado do Cálculo</CardTitle>
-              <CardDescription className="text-gray-400">Detalhamento dos custos e margens sugeridas.</CardDescription>
+              <CardDescription className="text-gray-400">Detalhamento dos custos e margens.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
@@ -382,8 +379,8 @@ function CalculatorPage() {
                 <CostRow label="Embalagem" value={Number(form.packaging)} />
                 <Separator className="bg-[#22223a]" />
                 <div className="flex justify-between items-center py-1">
-                  <span className="font-bold">CUSTO TOTAL</span>
-                  <span className="font-bold">R$ {result.subtotal.toFixed(2)}</span>
+                  <span className="font-bold text-white">CUSTO TOTAL</span>
+                  <span className="font-bold text-white">R$ {result.subtotal.toFixed(2)}</span>
                 </div>
                 <CostRow label="Margem de Lucro" value={result.marginValue} color="text-green-500" />
                 <CostRow label="Taxa Marketplace" value={result.platformFeeValue} color="text-red-500" />
