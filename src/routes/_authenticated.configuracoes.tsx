@@ -1,16 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserSettings, updateUserSettings, getMaterials, addMaterial, deleteMaterial } from '@/lib/data.functions';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { Zap, DollarSign, PenLine, Trash2, Plus, Info, CheckCircle2, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package } from 'lucide-react';
 import { useServerFn } from '@tanstack/react-start';
+
 
 export const Route = createFileRoute('/_authenticated/configuracoes')({
   component: SettingsPage,
