@@ -9,8 +9,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
       throw redirect({ to: '/auth/login' });
     }
   },
