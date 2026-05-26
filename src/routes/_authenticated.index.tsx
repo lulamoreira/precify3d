@@ -4,14 +4,15 @@ import { getQuotes } from '@/lib/data.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { DollarSign, TrendingUp, ShoppingBag, ClipboardList, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/_authenticated/')({
   component: DashboardPage,
 });
+
 
 function DashboardPage() {
   const { data: quotes, isLoading } = useQuery({
