@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable/index';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,25 +30,35 @@ function SignupPage() {
     });
 
     if (error) {
-      toast.error(error.message);
+      if (error.message.includes('already registered')) {
+        toast.error('Este e-mail já está cadastrado. Tente fazer login.');
+        navigate({ to: '/auth/login' });
+      } else {
+        toast.error(error.message);
+      }
       setLoading(false);
       return;
     }
 
-    if (data.session) {
-      toast.success('Cadastro realizado com sucesso! Entrando...');
+    if (data.user && !data.session) {
+      toast.success('Conta criada! Verifique seu e-mail para confirmar seu cadastro.');
+      navigate({ to: '/auth/login' });
+    } else if (data.session) {
+      toast.success('Cadastro realizado com sucesso! Bem-vindo.');
       navigate({ to: '/' });
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
-        navigate({ to: '/auth/login' });
-      } else {
-        toast.success('Cadastro realizado com sucesso! Entrando...');
-        navigate({ to: '/' });
-      }
+      // Fallback behavior if session is missing but user exists (shouldn't happen with auto-confirm)
+      toast.success('Cadastro realizado! Tente fazer login.');
+      navigate({ to: '/auth/login' });
     }
     setLoading(false);
+  };
+
+  const handleGoogleSignup = async () => {
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) toast.error(result.error.message);
   };
 
   return (
@@ -87,6 +98,17 @@ function SignupPage() {
               {loading ? 'Criando conta...' : 'Cadastrar'}
             </Button>
           </form>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-[#22223a]" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-[#111128] px-2 text-gray-400">Ou cadastre-se com</span>
+            </div>
+          </div>
+          <Button variant="outline" className="w-full border-[#22223a] bg-transparent text-white hover:bg-[#22223a]" onClick={handleGoogleSignup}>
+            Google
+          </Button>
         </CardContent>
         <CardFooter className="flex flex-wrap items-center justify-center gap-2">
           <span className="text-sm text-gray-400">Já tem uma conta?</span>
