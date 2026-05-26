@@ -17,6 +17,7 @@ export const Route = createFileRoute('/_authenticated/historico')({
   component: HistoryPage,
 });
 
+
 function HistoryPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');

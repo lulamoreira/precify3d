@@ -10,6 +10,7 @@ export const Route = createFileRoute('/auth/signup')({
   component: SignupPage,
 });
 
+
 function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

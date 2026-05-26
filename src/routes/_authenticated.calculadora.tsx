@@ -21,6 +21,7 @@ export const Route = createFileRoute('/_authenticated/calculadora')({
 });
 
 
+
 function CalculatorPage() {
   const queryClient = useQueryClient();
   const { data: materials } = useQuery({ queryKey: ['materials'], queryFn: () => getMaterials() });

@@ -16,6 +16,7 @@ export const Route = createFileRoute('/_authenticated/configuracoes')({
   component: SettingsPage,
 });
 
+
 function SettingsPage() {
   const queryClient = useQueryClient();
   const updateSettingsFn = useServerFn(updateUserSettings);
