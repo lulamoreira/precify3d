@@ -20,19 +20,32 @@ function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ 
-      email, 
+    const { data, error } = await supabase.auth.signUp({
+      email,
       password,
       options: {
-        emailRedirectTo: window.location.origin + '/auth/login',
-      }
+        emailRedirectTo: window.location.origin,
+      },
     });
-    
+
     if (error) {
       toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.session) {
+      toast.success('Cadastro realizado com sucesso! Entrando...');
+      navigate({ to: '/' });
     } else {
-      toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
-      navigate({ to: '/auth/login' });
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
+        navigate({ to: '/auth/login' });
+      } else {
+        toast.success('Cadastro realizado com sucesso! Entrando...');
+        navigate({ to: '/' });
+      }
     }
     setLoading(false);
   };
