@@ -411,7 +411,7 @@ function CalculatorPage() {
           </Card>
         ) : (
           <div className="h-full flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-[#22223a] rounded-2xl opacity-50">
-             <Calculator className="text-gray-600 mb-4" size={48} />
+             <CalculatorIcon className="text-gray-600 mb-4" size={48} />
              <p className="text-gray-500">Aguardando cálculo para exibir resultados...</p>
           </div>
         )}
