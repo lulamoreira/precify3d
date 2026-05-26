@@ -123,13 +123,14 @@ function CalculatorPage() {
   };
 
   const mutation = useMutation({
-    mutationFn: (data: any) => saveQuote(data),
+    mutationFn: (data: any) => saveQuoteFn({ data }),
     onSuccess: () => {
       toast.success('Orçamento salvo com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
     },
-    onError: (err) => toast.error('Erro ao salvar orçamento: ' + err.message)
+    onError: (err: any) => toast.error('Erro ao salvar orçamento: ' + err.message)
   });
+
 
   const handleSave = () => {
     if (!result) return;
