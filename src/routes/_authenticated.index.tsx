@@ -8,30 +8,30 @@ import { DollarSign, TrendingUp, ShoppingBag, ClipboardList, Plus } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { useServerFn } from '@tanstack/react-start';
 
 export const Route = createFileRoute('/_authenticated/')({
   component: DashboardPage,
 });
 
-
 function DashboardPage() {
+  const getQuotesFn = useServerFn(getQuotes);
   const { data: quotes, isLoading } = useQuery({
     queryKey: ['quotes'],
-    queryFn: () => getQuotes(),
+    queryFn: () => getQuotesFn(),
   });
 
   const stats = {
     totalQuotes: quotes?.length || 0,
-    totalSales: quotes?.reduce((acc, q) => acc + Number(q.final_price), 0) || 0,
-    totalProfit: quotes?.reduce((acc, q) => acc + Number(q.profit), 0) || 0,
-    averageTicket: quotes?.length ? (quotes.reduce((acc, q) => acc + Number(q.final_price), 0) / quotes.length) : 0,
+    totalSales: quotes?.reduce((acc: number, q: any) => acc + Number(q.final_price), 0) || 0,
+    totalProfit: quotes?.reduce((acc: number, q: any) => acc + Number(q.profit), 0) || 0,
+    averageTicket: quotes?.length ? (quotes.reduce((acc: number, q: any) => acc + Number(q.final_price), 0) / quotes.length) : 0,
   };
 
-  // Prepare chart data (last 4 weeks)
   const chartData = Array.from({ length: 4 }).map((_, i) => {
     const weekStart = startOfWeek(subWeeks(new Date(), 3 - i), { weekStartsOn: 1 });
     const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-    const count = quotes?.filter(q => {
+    const count = quotes?.filter((q: any) => {
       const date = new Date(q.created_at);
       return isWithinInterval(date, { start: weekStart, end: weekEnd });
     }).length || 0;
@@ -48,11 +48,11 @@ function DashboardPage() {
     <div className="space-y-8 animate-fadeIn">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
           <p className="text-gray-400">Bem-vindo ao Precify3D</p>
         </div>
         <Link to="/calculadora">
-          <Button className="bg-[#f97316] hover:bg-[#d96314] gap-2 rounded-xl">
+          <Button className="bg-[#f97316] hover:bg-[#d96314] gap-2 rounded-xl text-white">
             <Plus size={20} />
             Novo Orçamento
           </Button>
@@ -93,7 +93,7 @@ function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentQuotes.map((quote) => (
+              {recentQuotes.map((quote: any) => (
                 <div key={quote.id} className="flex items-center justify-between p-3 rounded-xl bg-[#07071a] border border-[#22223a]">
                   <div>
                     <p className="font-medium truncate max-w-[120px]">{quote.project}</p>
@@ -127,7 +127,7 @@ function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentQuotes.map((quote) => (
+              {recentQuotes.map((quote: any) => (
                 <TableRow key={quote.id} className="border-[#22223a] hover:bg-[#22223a]/50">
                   <TableCell>{quote.client}</TableCell>
                   <TableCell>{quote.project}</TableCell>
