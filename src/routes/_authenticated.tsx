@@ -52,7 +52,7 @@ function AuthenticatedLayout() {
             .from('profiles')
             .upsert({ 
               id: user.id, 
-              email: user.email,
+              email: user.email!,
               role: user.email === 'lula1973@gmail.com' ? 'admin' : 'user'
             })
             .select()
