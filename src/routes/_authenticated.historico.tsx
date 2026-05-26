@@ -21,19 +21,16 @@ function HistoryPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   
-  const { data: quotes, isLoading } = useQuery({
-    queryKey: ['quotes'],
-    queryFn: () => getQuotes(),
-  });
-
+  const deleteQuoteFn = useServerFn(deleteQuote);
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteQuote(id),
+    mutationFn: (id: string) => deleteQuoteFn({ data: id }),
     onSuccess: () => {
       toast.success('Orçamento excluído.');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
     },
-    onError: (err) => toast.error('Erro ao excluir: ' + err.message)
+    onError: (err: any) => toast.error('Erro ao excluir: ' + err.message)
   });
+
 
   const filteredQuotes = quotes?.filter(q => 
     q.client?.toLowerCase().includes(search.toLowerCase()) ||
