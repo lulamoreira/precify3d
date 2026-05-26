@@ -14,7 +14,165 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      materials: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          price_per_kg: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          price_per_kg: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price_per_kg?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quotes: {
+        Row: {
+          client: string | null
+          cost_energy: number
+          cost_labor: number
+          cost_machine: number
+          cost_material: number
+          created_at: string
+          discount_pct: number
+          discount_value: number
+          failure_pct: number
+          final_price: number
+          id: string
+          margin_pct: number
+          margin_value: number
+          material_name: string
+          notes: string | null
+          packaging: number
+          platform_fee: number
+          platform_fee_value: number
+          platform_name: string | null
+          profit: number
+          project: string | null
+          subtotal: number
+          time_hours: number
+          user_id: string
+          weight_g: number
+        }
+        Insert: {
+          client?: string | null
+          cost_energy: number
+          cost_labor: number
+          cost_machine: number
+          cost_material: number
+          created_at?: string
+          discount_pct: number
+          discount_value: number
+          failure_pct: number
+          final_price: number
+          id?: string
+          margin_pct: number
+          margin_value: number
+          material_name: string
+          notes?: string | null
+          packaging: number
+          platform_fee: number
+          platform_fee_value: number
+          platform_name?: string | null
+          profit: number
+          project?: string | null
+          subtotal: number
+          time_hours: number
+          user_id: string
+          weight_g: number
+        }
+        Update: {
+          client?: string | null
+          cost_energy?: number
+          cost_labor?: number
+          cost_machine?: number
+          cost_material?: number
+          created_at?: string
+          discount_pct?: number
+          discount_value?: number
+          failure_pct?: number
+          final_price?: number
+          id?: string
+          margin_pct?: number
+          margin_value?: number
+          material_name?: string
+          notes?: string | null
+          packaging?: number
+          platform_fee?: number
+          platform_fee_value?: number
+          platform_name?: string | null
+          profit?: number
+          project?: string | null
+          subtotal?: number
+          time_hours?: number
+          user_id?: string
+          weight_g?: number
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          failure: number
+          id: string
+          kwh: number
+          labor: number
+          machine: number
+          margin: number
+          packaging: number
+          platform_fee: number
+          updated_at: string
+          user_id: string
+          watt: number
+        }
+        Insert: {
+          created_at?: string
+          failure?: number
+          id?: string
+          kwh?: number
+          labor?: number
+          machine?: number
+          margin?: number
+          packaging?: number
+          platform_fee?: number
+          updated_at?: string
+          user_id: string
+          watt?: number
+        }
+        Update: {
+          created_at?: string
+          failure?: number
+          id?: string
+          kwh?: number
+          labor?: number
+          machine?: number
+          margin?: number
+          packaging?: number
+          platform_fee?: number
+          updated_at?: string
+          user_id?: string
+          watt?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
