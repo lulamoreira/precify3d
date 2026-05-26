@@ -65,7 +65,7 @@ function ProfilePage() {
 
   const handleCepSearch = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, '');
-    setForm(prev => ({ ...prev, cep: cleanCep }));
+    setForm((prev: any) => ({ ...prev, cep: cleanCep }));
     
     if (cleanCep.length === 8) {
       setLoadingCep(true);
@@ -76,7 +76,7 @@ function ProfilePage() {
         if (data.erro) {
           toast.error('CEP não encontrado');
         } else {
-          setForm(prev => ({
+          setForm((prev: any) => ({
             ...prev,
             city: `${data.localidade} - ${data.uf}`,
             address_complement: data.logradouro + (data.bairro ? `, ${data.bairro}` : '')
