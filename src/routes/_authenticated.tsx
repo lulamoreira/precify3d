@@ -63,7 +63,8 @@ function AuthenticatedLayout() {
         setProfile(currentProfile);
 
         // Check for completeness and redirect if necessary
-        const isProfileComplete = currentProfile?.full_name && currentProfile?.cep;
+        // A profile is considered incomplete if full_name or phone or cep or address_number is missing
+        const isProfileComplete = currentProfile?.full_name && currentProfile?.phone && currentProfile?.cep && currentProfile?.address_number;
         const isAtProfilePage = window.location.pathname === '/perfil';
         
         if (!isProfileComplete && !isAtProfilePage) {
