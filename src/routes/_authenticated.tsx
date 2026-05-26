@@ -136,12 +136,16 @@ function AuthenticatedLayout() {
           </nav>
           <div className="p-4 border-t border-[#22223a]">
             <div className="flex items-center gap-3 px-4 py-3">
-              <Avatar>
-                <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
-                <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
-              </Avatar>
+              <Link to="/perfil" className="hover:opacity-80 transition-opacity">
+                <Avatar>
+                  <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
+                  <AvatarFallback>{profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                </Avatar>
+              </Link>
               <div className="flex-1 truncate">
-                <p className="font-medium truncate text-xs">{user?.email}</p>
+                <p className="font-medium truncate text-xs">
+                  {profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
+                </p>
                 {profile?.role === 'admin' && (
                   <span className="text-[10px] bg-[#f97316] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Admin</span>
                 )}
