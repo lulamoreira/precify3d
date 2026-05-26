@@ -13,12 +13,13 @@ import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, STLData } from '@/lib/stl-utils';
 import { calculatePricing, PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Trash2, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2 } from 'lucide-react';
+import { Upload, Zap, Trash2, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/_authenticated/calculadora')({
   component: CalculatorPage,
 });
+
 
 function CalculatorPage() {
   const queryClient = useQueryClient();
