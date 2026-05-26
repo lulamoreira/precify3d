@@ -19,6 +19,15 @@ function LoginPage() {
   const [authHint, setAuthHint] = useState('');
   const navigate = useNavigate();
 
+  // Redirect if already logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate({ to: '/', replace: true });
+      }
+    });
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
