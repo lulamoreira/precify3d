@@ -117,3 +117,31 @@ export const deleteQuote = createServerFn({ method: "POST" })
     if (error) throw error;
     return { success: true };
   });
+
+export const getProfile = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+    
+    if (error) throw error;
+    return data;
+  });
+
+export const updateProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: any) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update(data)
+      .eq("id", userId);
+    
+    if (error) throw error;
+    return { success: true };
+  });

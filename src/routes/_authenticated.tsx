@@ -44,9 +44,9 @@ function AuthenticatedLayout() {
           .eq('id', user.id)
           .maybeSingle();
         
-        if (profileData) {
-          setProfile(profileData);
-        } else {
+        let currentProfile = profileData;
+        
+        if (!profileData) {
           // If profile doesn't exist, create it (fallback if trigger failed)
           const { data: newProfile } = await supabase
             .from('profiles')
@@ -57,7 +57,18 @@ function AuthenticatedLayout() {
             })
             .select()
             .single();
-          setProfile(newProfile);
+          currentProfile = newProfile;
+        }
+        
+        setProfile(currentProfile);
+
+        // Check for completeness and redirect if necessary
+        // A profile is considered incomplete if full_name or phone or cep or address_number is missing
+        const isProfileComplete = currentProfile?.full_name && currentProfile?.phone && currentProfile?.cep && currentProfile?.address_number;
+        const isAtProfilePage = window.location.pathname === '/perfil';
+        
+        if (!isProfileComplete && !isAtProfilePage) {
+          navigate({ to: '/perfil', search: { complete: 'true' } });
         }
       } else {
         // Double check on client side if session is really gone
@@ -126,12 +137,16 @@ function AuthenticatedLayout() {
           </nav>
           <div className="p-4 border-t border-[#22223a]">
             <div className="flex items-center gap-3 px-4 py-3">
-              <Avatar>
-                <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
-                <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
-              </Avatar>
+              <Link to="/perfil" className="hover:opacity-80 transition-opacity">
+                <Avatar>
+                  <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
+                  <AvatarFallback>{profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                </Avatar>
+              </Link>
               <div className="flex-1 truncate">
-                <p className="font-medium truncate text-xs">{user?.email}</p>
+                <p className="font-medium truncate text-xs">
+                  {profile?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
+                </p>
                 {profile?.role === 'admin' && (
                   <span className="text-[10px] bg-[#f97316] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Admin</span>
                 )}
@@ -149,9 +164,17 @@ function AuthenticatedLayout() {
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
               <span className="text-[#f97316]">⚡</span> Precify3D
             </h1>
-            <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-              {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/perfil">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
+                  <AvatarFallback className="text-[10px]">{profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
+                </Avatar>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+              </Button>
+            </div>
           </header>
         )}
         <div className="p-4 md:p-8 flex-1">
