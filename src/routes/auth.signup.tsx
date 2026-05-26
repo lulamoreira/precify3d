@@ -55,10 +55,23 @@ function SignupPage() {
   };
 
   const handleGoogleSignup = async () => {
+    setLoading(true);
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: window.location.origin,
+      extraParams: {
+        prompt: 'select_account',
+        ...(email ? { login_hint: email } : {}),
+      },
     });
-    if (result.error) toast.error(result.error.message);
+    if (result.error) {
+      toast.error(result.error.message);
+      setLoading(false);
+      return;
+    }
+    if (result.redirected) return;
+    toast.success('Cadastro com Google realizado com sucesso!');
+    navigate({ to: '/', replace: true });
+    setLoading(false);
   };
 
   return (
@@ -106,8 +119,8 @@ function SignupPage() {
               <span className="bg-[#111128] px-2 text-gray-400">Ou cadastre-se com</span>
             </div>
           </div>
-          <Button variant="outline" className="w-full border-[#22223a] bg-transparent text-white hover:bg-[#22223a]" onClick={handleGoogleSignup}>
-            Google
+          <Button type="button" variant="outline" className="w-full border-[#22223a] bg-transparent text-white hover:bg-[#22223a]" onClick={handleGoogleSignup} disabled={loading}>
+            Cadastrar com Google
           </Button>
         </CardContent>
         <CardFooter className="flex flex-wrap items-center justify-center gap-2">
