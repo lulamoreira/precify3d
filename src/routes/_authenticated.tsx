@@ -26,12 +26,23 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      if (user) {
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+          .then(({ data }) => setProfile(data));
+      }
+    });
   }, []);
 
   const handleLogout = async () => {
