@@ -44,9 +44,9 @@ function AuthenticatedLayout() {
           .eq('id', user.id)
           .maybeSingle();
         
-        if (profileData) {
-          setProfile(profileData);
-        } else {
+        let currentProfile = profileData;
+        
+        if (!profileData) {
           // If profile doesn't exist, create it (fallback if trigger failed)
           const { data: newProfile } = await supabase
             .from('profiles')
@@ -57,7 +57,17 @@ function AuthenticatedLayout() {
             })
             .select()
             .single();
-          setProfile(newProfile);
+          currentProfile = newProfile;
+        }
+        
+        setProfile(currentProfile);
+
+        // Check for completeness and redirect if necessary
+        const isProfileComplete = currentProfile?.full_name && currentProfile?.cep;
+        const isAtProfilePage = window.location.pathname === '/perfil';
+        
+        if (!isProfileComplete && !isAtProfilePage) {
+          navigate({ to: '/perfil', search: { complete: 'true' } });
         }
       } else {
         // Double check on client side if session is really gone
