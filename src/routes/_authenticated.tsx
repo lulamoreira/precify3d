@@ -24,7 +24,6 @@ export const Route = createFileRoute('/_authenticated')({
   component: AuthenticatedLayout,
 });
 
-
 function AuthenticatedLayout() {
   const [user, setUser] = useState<any>(null);
   const isMobile = useIsMobile();
@@ -41,15 +40,14 @@ function AuthenticatedLayout() {
   };
 
   const navItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/' },
-    { label: 'Calculadora', icon: Calculator, to: '/calculadora' },
-    { label: 'Histórico', icon: History, to: '/historico' },
-    { label: 'Configurações', icon: Settings, to: '/configuracoes' },
+    { label: 'Dashboard', icon: LayoutDashboard, to: '/' as const },
+    { label: 'Calculadora', icon: Calculator, to: '/calculadora' as const },
+    { label: 'Histórico', icon: History, to: '/historico' as const },
+    { label: 'Configurações', icon: Settings, to: '/configuracoes' as const },
   ];
 
   return (
     <div className="min-h-screen bg-[#07071a] text-white flex">
-      {/* Sidebar Desktop */}
       {!isMobile && (
         <aside className="w-64 bg-[#111128] border-r border-[#22223a] flex flex-col fixed inset-y-0">
           <div className="p-6">
@@ -57,7 +55,6 @@ function AuthenticatedLayout() {
               <span className="text-[#f97316]">⚡</span> Precify3D
             </h1>
           </div>
-          
           <nav className="flex-1 px-4 space-y-2 mt-4">
             {navItems.map((item) => (
               <Link
@@ -72,27 +69,23 @@ function AuthenticatedLayout() {
               </Link>
             ))}
           </nav>
-
           <div className="p-4 border-t border-[#22223a]">
             <div className="flex items-center gap-3 px-4 py-3">
               <Avatar>
                 <AvatarImage src={user?.user_metadata?.avatar_url} />
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 truncate">
-                <p className="text-sm font-medium truncate">{user?.email}</p>
+              <div className="flex-1 truncate text-xs">
+                <p className="font-medium truncate">{user?.email}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout} className="text-gray-400 hover:text-white">
-                <LogOut size={20} />
+                <LogOut size={18} />
               </Button>
             </div>
           </div>
         </aside>
       )}
-
-      {/* Main Content */}
       <main className={cn("flex-1 flex flex-col", !isMobile && "pl-64")}>
-        {/* Mobile Header */}
         {isMobile && (
           <header className="bg-[#111128] border-b border-[#22223a] p-4 flex justify-between items-center sticky top-0 z-50">
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
@@ -103,12 +96,9 @@ function AuthenticatedLayout() {
             </Button>
           </header>
         )}
-
         <div className="p-4 md:p-8 flex-1">
           <Outlet />
         </div>
-
-        {/* Mobile Bottom Nav */}
         {isMobile && (
           <nav className="bg-[#111128] border-t border-[#22223a] flex justify-around p-2 sticky bottom-0 z-50">
             {navItems.map((item) => (
