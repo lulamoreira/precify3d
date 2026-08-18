@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -18,11 +18,14 @@ import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity
 import { plateCapacity, plateTimeHours, plateRisk, calcBatch } from '@/lib/batch-utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { calculatePricing, calculatePricingV2, type PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle, Save, FileText, Plus, UserPlus, Trash2, GripVertical } from 'lucide-react';
+import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle, Save, FileText, Plus, UserPlus, Trash2, GripVertical, AlertCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import * as fflate from 'fflate';
 import { useServerFn } from '@tanstack/react-start';
+import { getPricingFingerprint, resetJobFingerprint } from '@/lib/quota-utils';
+import { consumePricing } from '@/lib/quota.functions';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export const Route = createFileRoute('/_authenticated/calculadora')({
   component: CalculatorPage,
@@ -39,6 +42,10 @@ function CalculatorPage() {
   const { data: materials } = useQuery({ queryKey: ['materials'], queryFn: () => getMaterialsFn() });
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: () => getUserSettingsFn() });
   const { data: clientsData } = useQuery({ queryKey: ['clients'], queryFn: () => getClientsFn() });
+  const consumePricingFn = useServerFn(consumePricing);
+  const [isQuotaModalOpen, setIsQuotaModalOpen] = useState(false);
+  const [quotaError, setQuotaError] = useState<string | null>(null);
+  const [calculating, setCalculating] = useState(false);
   const clients = clientsData?.data || [];
 
   const [form, setForm] = useState({
@@ -162,121 +169,146 @@ function CalculatorPage() {
     }
   }, [stlData, infill, density, form.useV2, settings]);
 
-  useEffect(() => {
-    if (form.useV2 && settings && stlData) {
-      const quantity = Math.max(1, parseInt(form.quantity) || 1);
-      const n = Math.max(1, partsPerPlate);
-      const isBatchActive = batchMode && quantity > 1;
+  const performCalculation = async () => {
+    if (!settings) return;
+    
+    setCalculating(true);
+    setQuotaError(null);
+    
+    try {
+      // 1. Check/Consume Quota
+      const fingerprint = await getPricingFingerprint({
+        fileHash: currentFileMetadata?.hash || undefined,
+        projectName: form.project || undefined,
+        materialId: currentMat?.id || undefined
+      });
+      
+      const response = await consumePricingFn({ 
+        data: { fingerprint } 
+      });
+      
+      if (!response.allowed) {
+        setQuotaError((response as any).reason || "Limite de uso atingido.");
+        setIsQuotaModalOpen(true);
+        setCalculating(false);
+        return;
+      }
+      
+      // 2. Perform Math
+      if (form.useV2 && stlData) {
+        const quantity = Math.max(1, parseInt(form.quantity) || 1);
+        const n = Math.max(1, partsPerPlate);
+        const isBatchActive = batchMode && quantity > 1;
 
-      if (isBatchActive) {
-        const batch = calcBatch({
-          quantidade: quantity,
-          n: n,
-          modo: batchPrintMode,
-          volumeExtrudadoMm3,
-          pesoG: parseFloat(form.weightG) || 0,
-          pesoSuporteG,
-          plateWasteG: Number((settings as any).plate_waste_g) || 5,
-          precoKg: currentMat?.price_per_kg || 100,
-          watts: settings.watt,
-          precoKwh: settings.kwh,
-          precoHoraMaquina: settings.machine,
-          setupMinutes: Number(form.setupMinutes) || 0,
-          precoHoraMaoObra: settings.labor,
-          posMinutos: Number(form.postProcessingMinutes) || 0,
-          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
-          embalagem: Number(form.packaging) || 0,
-          dimZ: stlData.dimZ,
-          layerHeight: settings.layer_height || 0.2,
-          volumetricRate: settings.volumetric_rate || 8,
-          travelSeg: Number((settings as any).batch_travel_seconds) || 2,
-          calibracao: settings.time_calibration || 1.0,
-          failurePct: Number(form.failurePct) || 0,
-          killsPlate: (settings as any).batch_kills_plate ?? true,
-          lossFactor: (settings as any).batch_loss_factor || 0.6,
-          marginPct: Number(form.marginPct) || 0,
-          discountPct: Number(form.discountPct) || 0,
-          taxPct: Number(form.taxPct) || 0,
-          platformFeePct: Number(form.platformFee) || 0
-        });
-        setBatchResult(batch);
-        setResult({
-          costMaterial: (batch.unitCost * quantity) / 100 * 40, // Mock for structure
-          costEnergy: 0,
-          costMachine: 0,
-          costPost: 0,
-          totalBaseCost: batch.unitCost * quantity,
-          precoTabela: (batch.unitPrice * quantity) / (1 - Number(form.discountPct)/100),
-          precoComDesconto: batch.unitPrice * quantity,
-          finalPrice: batch.finalPrice,
-          profit: batch.finalPrice - (batch.unitCost * quantity),
-          taxValue: 0,
-          platformFeeValue: 0,
-          breakEvenPrice: batch.unitCost * quantity
-        } as any);
-      } else {
-        const res = calculatePricingV2({
+        if (isBatchActive) {
+          const batch = calcBatch({
+            quantidade: quantity,
+            n: n,
+            modo: batchPrintMode,
+            volumeExtrudadoMm3,
+            pesoG: parseFloat(form.weightG) || 0,
+            pesoSuporteG,
+            plateWasteG: Number((settings as any).plate_waste_g) || 5,
+            precoKg: currentMat?.price_per_kg || 100,
+            watts: settings.watt,
+            precoKwh: settings.kwh,
+            precoHoraMaquina: settings.machine,
+            setupMinutes: Number(form.setupMinutes) || 0,
+            precoHoraMaoObra: settings.labor,
+            posMinutos: Number(form.postProcessingMinutes) || 0,
+            precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+            embalagem: Number(form.packaging) || 0,
+            dimZ: stlData.dimZ,
+            layerHeight: settings.layer_height || 0.2,
+            volumetricRate: settings.volumetric_rate || 8,
+            travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+            calibracao: settings.time_calibration || 1.0,
+            failurePct: Number(form.failurePct) || 0,
+            killsPlate: (settings as any).batch_kills_plate ?? true,
+            lossFactor: (settings as any).batch_loss_factor || 0.6,
+            marginPct: Number(form.marginPct) || 0,
+            discountPct: Number(form.discountPct) || 0,
+            taxPct: Number(form.taxPct) || 0,
+            platformFeePct: Number(form.platformFee) || 0
+          });
+          setBatchResult(batch);
+          setResult({
+            costMaterial: (batch.unitCost * quantity) / 100 * 40, 
+            costEnergy: 0,
+            costMachine: 0,
+            costPost: 0,
+            totalBaseCost: batch.unitCost * quantity,
+            precoTabela: (batch.unitPrice * quantity) / (1 - Number(form.discountPct)/100),
+            precoComDesconto: batch.unitPrice * quantity,
+            finalPrice: batch.finalPrice,
+            profit: batch.finalPrice - (batch.unitCost * quantity),
+            taxValue: 0,
+            platformFeeValue: 0,
+            breakEvenPrice: batch.unitCost * quantity
+          } as any);
+        } else {
+          const res = calculatePricingV2({
+            weightG: parseFloat(form.weightG) || 0,
+            timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
+            materialPricePerKg: currentMat?.price_per_kg || 100,
+            printerWatts: settings.watt,
+            kwhPrice: settings.kwh,
+            machinePricePerHour: settings.machine,
+            laborPricePerHour: settings.labor,
+            setupMinutes: parseInt(form.setupMinutes) || 0,
+            postProcessingPriceHour: parseInt(form.postProcessingPriceHour) || 0,
+            postProcessingMinutes: parseInt(form.postProcessingMinutes) || 0,
+            packagingPrice: parseInt(form.packaging) || 0,
+            marginPct: parseInt(form.marginPct) || 0,
+            taxPct: parseInt(form.taxPct) || 0,
+            platformFeePct: parseInt(form.platformFee) || 0,
+            discountPct: parseInt(form.discountPct) || 0,
+            failurePct: parseInt(form.failurePct) || 0,
+          });
+          setResult(res);
+          setBatchResult(null);
+        }
+      } else if (!form.useV2) {
+        const res = calculatePricing({
           weightG: parseFloat(form.weightG) || 0,
           timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
           materialPricePerKg: currentMat?.price_per_kg || 100,
-          printerWatts: settings.watt,
-          kwhPrice: settings.kwh,
-          machinePricePerHour: settings.machine,
-          laborPricePerHour: settings.labor,
-          setupMinutes: parseInt(form.setupMinutes) || 0,
-          postProcessingPriceHour: parseInt(form.postProcessingPriceHour) || 0,
-          postProcessingMinutes: parseInt(form.postProcessingMinutes) || 0,
-          packagingPrice: parseInt(form.packaging) || 0,
-          marginPct: parseInt(form.marginPct) || 0,
-          taxPct: parseInt(form.taxPct) || 0,
-          platformFeePct: parseInt(form.platformFee) || 0,
-          discountPct: parseInt(form.discountPct) || 0,
+          kwhPrice: settings?.kwh || 0,
+          printerWatts: settings?.watt || 0,
+          laborPricePerHour: settings?.labor || 0,
+          machinePricePerHour: settings?.machine || 0,
           failurePct: parseInt(form.failurePct) || 0,
+          marginPct: parseInt(form.marginPct) || 0,
+          discountPct: parseInt(form.discountPct) || 0,
+          packagingPrice: parseInt(form.packaging) || 0,
+          platformFeePct: parseInt(form.platformFee) || 0
         });
-        setResult(res);
+        setResult(res as any);
         setBatchResult(null);
       }
-    } else if (!form.useV2) {
-      const res = calculatePricing({
-        weightG: parseFloat(form.weightG) || 0,
-        timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
-        materialPricePerKg: currentMat?.price_per_kg || 100,
-        kwhPrice: settings?.kwh || 0,
-        printerWatts: settings?.watt || 0,
-        laborPricePerHour: settings?.labor || 0,
-        machinePricePerHour: settings?.machine || 0,
-        failurePct: parseInt(form.failurePct) || 0,
-        marginPct: parseInt(form.marginPct) || 0,
-        discountPct: parseInt(form.discountPct) || 0,
-        packagingPrice: parseInt(form.packaging) || 0,
-        platformFeePct: parseInt(form.platformFee) || 0
-      });
-      setResult(res as any);
-      setBatchResult(null);
+      
+      queryClient.invalidateQueries({ queryKey: ['quotaStatus'] });
+    } catch (error) {
+      console.error("Pricing error:", error);
+      toast.error("Erro ao processar cálculo.");
+    } finally {
+      setCalculating(false);
     }
+  };
+
+  useEffect(() => {
+    // Reset fingerprint when critical params change so user can recalculate if they want
+    resetJobFingerprint();
+    setResult(null);
   }, [
-    form.quantity, 
-    form.weightG, 
-    form.h, 
-    form.m, 
-    form.failurePct, 
-    form.marginPct, 
-    form.discountPct, 
-    form.taxPct, 
-    form.setupMinutes, 
-    form.postProcessingMinutes, 
-    form.postProcessingPriceHour, 
-    form.packaging, 
-    form.platformFee, 
-    form.useV2, 
-    settings, 
-    stlData, 
-    batchMode, 
-    batchPrintMode, 
-    partsPerPlate,
-    volumeExtrudadoMm3,
-    pesoSuporteG
+    form.weightG,
+    infill,
+    form.quantity,
+    form.useV2,
+    batchMode,
+    currentMat
   ]);
+
 
   const handleFile = async (file: File) => {
     const ext = file.name.toLowerCase().split('.').pop();
@@ -368,33 +400,8 @@ function CalculatorPage() {
       toast.error('Peso e tempo são obrigatórios.');
       return;
     }
-
-    const timeHours = (Number(form.h) || 0) + (Number(form.m) || 0) / 60;
     
-    const inputData = {
-      weightG: Number(form.weightG),
-      timeHours,
-      materialPricePerKg: Number(currentMat?.price_per_kg || 0),
-      kwhPrice: Number(settings?.kwh || 0),
-      printerWatts: Number(settings?.watt || 0),
-      laborPricePerHour: Number(settings?.labor || 0),
-      machinePricePerHour: Number(settings?.machine || 0),
-      failurePct: Number(form.failurePct),
-      marginPct: Number(form.marginPct),
-      discountPct: Number(form.discountPct),
-      packagingPrice: Number(form.packaging),
-      platformFeePct: Number(form.platformFee),
-      
-      // V2
-      quantity: Number(form.quantity),
-      taxPct: Number(form.taxPct),
-      setupMinutes: Number(form.setupMinutes),
-      postProcessingPriceHour: Number(form.postProcessingPriceHour),
-      postProcessingMinutes: Number(form.postProcessingMinutes)
-    };
-
-    const res = form.useV2 ? calculatePricingV2(inputData) : calculatePricing(inputData);
-    setResult(res);
+    performCalculation();
   };
 
   const mutation = useMutation({
@@ -926,10 +933,18 @@ function CalculatorPage() {
                    <Plus size={18} />
                    Adicionar Peça
                  </Button>
-                 <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" onClick={calculate}>
-                   <Zap size={18} />
-                   Calcular Preço
-                 </Button>
+                  <Button 
+                    className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" 
+                    onClick={calculate}
+                    disabled={calculating}
+                  >
+                    {calculating ? (
+                      <Loader2 className="animate-spin" size={18} />
+                    ) : (
+                      <Zap size={18} />
+                    )}
+                    {calculating ? 'Calculando...' : 'Calcular Preço'}
+                  </Button>
             </div>
 
             {items.length > 0 && (
@@ -1221,6 +1236,36 @@ function CalculatorPage() {
           </div>
         )}
       </div>
+      <Dialog open={isQuotaModalOpen} onOpenChange={setIsQuotaModalOpen}>
+        <DialogContent className="bg-[#111128] border-[#22223a] text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <AlertCircle className="text-red-500" />
+              Limite de Precificação Atingido
+            </DialogTitle>
+            <DialogDescription className="text-gray-400 py-4">
+              {quotaError || "Você atingiu o limite de precificações diárias do seu plano atual."}
+              <br /><br />
+              O sistema detectou que esta peça ou projeto ainda não foi precificado hoje. 
+              Para continuar, você pode aguardar a renovação dos créditos à meia-noite ou fazer o upgrade para um plano profissional.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-3 sm:justify-center pt-4">
+            <Button variant="outline" onClick={() => setIsQuotaModalOpen(false)} className="border-[#22223a] text-gray-400 hover:text-white">
+              Entendi
+            </Button>
+            <Button 
+              className="bg-[#f97316] hover:bg-[#d96314] text-white font-bold px-8"
+              onClick={() => {
+                setIsQuotaModalOpen(false);
+                navigate({ to: '/planos' as any });
+              }}
+            >
+              Ver Planos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

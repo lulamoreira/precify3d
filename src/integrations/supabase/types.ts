@@ -89,6 +89,107 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_price_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          plan_id: string | null
+          price_month: number
+          price_year: number
+          stripe_price_month_id: string | null
+          stripe_price_year_id: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          plan_id?: string | null
+          price_month: number
+          price_year: number
+          stripe_price_month_id?: string | null
+          stripe_price_year_id?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          plan_id?: string | null
+          price_month?: number
+          price_year?: number
+          stripe_price_month_id?: string | null
+          stripe_price_year_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_price_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          daily_quota: number | null
+          description: string | null
+          features: Json | null
+          id: string
+          is_free: boolean
+          name: string
+          price_month: number
+          price_year: number
+          sort_order: number
+          stripe_price_month_id: string | null
+          stripe_price_year_id: string | null
+          stripe_product_id: string | null
+          trial_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          daily_quota?: number | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_free?: boolean
+          name: string
+          price_month?: number
+          price_year?: number
+          sort_order?: number
+          stripe_price_month_id?: string | null
+          stripe_price_year_id?: string | null
+          stripe_product_id?: string | null
+          trial_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          daily_quota?: number | null
+          description?: string | null
+          features?: Json | null
+          id?: string
+          is_free?: boolean
+          name?: string
+          price_month?: number
+          price_year?: number
+          sort_order?: number
+          stripe_price_month_id?: string | null
+          stripe_price_year_id?: string | null
+          stripe_product_id?: string | null
+          trial_days?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address_complement: string | null
@@ -417,6 +518,115 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          billing_period: string | null
+          created_at: string
+          current_period_ends_at: string | null
+          plan_code: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_period?: string | null
+          created_at?: string
+          current_period_ends_at?: string | null
+          plan_code: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_period?: string | null
+          created_at?: string
+          current_period_ends_at?: string | null
+          plan_code?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      usage_events: {
+        Row: {
+          created_at: string
+          fingerprint: string
+          id: string
+          label: string | null
+          period_start: string
+          quote_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fingerprint: string
+          id?: string
+          label?: string | null
+          period_start: string
+          quote_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          label?: string | null
+          period_start?: string
+          quote_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_events_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           created_at: string
@@ -497,12 +707,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_pricing: {
+        Args: { _fingerprint: string; _label?: string }
+        Returns: {
+          allowed: boolean
+          quota: number
+          remaining: number
+          resets_at: string
+          reused: boolean
+          unlimited: boolean
+          used: number
+        }[]
+      }
+      current_day_start: { Args: never; Returns: string }
       get_public_quote: { Args: { _token: string }; Returns: Json }
+      has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       next_quote_number: { Args: never; Returns: string }
+      quota_status: {
+        Args: never
+        Returns: {
+          daily_quota: number
+          plan_code: string
+          plan_name: string
+          remaining: number
+          resets_at: string
+          status: string
+          unlimited: boolean
+          used: number
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "owner" | "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -629,6 +866,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["owner", "admin", "user"],
+    },
   },
 } as const

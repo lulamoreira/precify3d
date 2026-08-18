@@ -153,7 +153,22 @@ export const getProfile = createServerFn({ method: "GET" })
 
 export const updateProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: any) => data)
+  .inputValidator((data: any) => {
+    return z.object({
+      full_name: z.string().optional(),
+      phone: z.string().optional(),
+      cep: z.string().optional(),
+      city: z.string().optional(),
+      address_number: z.string().optional(),
+      address_complement: z.string().optional(),
+      company_name: z.string().optional(),
+      company_document: z.string().optional(),
+      company_phone: z.string().optional(),
+      company_email: z.string().optional(),
+      brand_color: z.string().optional(),
+      company_logo_path: z.string().optional(),
+    }).parse(data);
+  })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { error } = await supabase
