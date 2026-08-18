@@ -125,7 +125,15 @@ function ProfilePage() {
       const { error } = await supabase
         .from('profiles')
         .update({
-          ...form,
+          full_name: form.full_name,
+          phone: form.phone,
+          cep: form.cep,
+          city: form.city,
+          address_number: form.address_number,
+          address_complement: form.address_complement,
+          company_name: form.company_name,
+          company_logo_path: form.company_logo_path,
+          brand_color: form.brand_color,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
