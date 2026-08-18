@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getQuotes, deleteQuote } from '@/lib/data.functions';
+import { getQuotes, deleteQuote, updateQuoteStatus } from '@/lib/data.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useServerFn } from '@tanstack/react-start';
+import { isVenda, valorVenda, lucroVenda, getStatusLabel, getStatusColor } from '@/lib/quote-status';
+import { Badge } from '@/components/ui/badge';
 
 
 export const Route = createFileRoute('/_authenticated/historico')({
@@ -46,10 +48,10 @@ function HistoryPage() {
   ) || [];
 
   const stats = {
+    vendasRealizadas: quotes?.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) || 0,
+    totalProfit: quotes?.filter(isVenda).reduce((acc, q) => acc + lucroVenda(q), 0) || 0,
+    averageTicket: quotes?.filter(isVenda).length ? (quotes.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) / quotes.filter(isVenda).length) : 0,
     totalQuotes: quotes?.length || 0,
-    totalSales: quotes?.reduce((acc, q) => acc + Number(q.final_price), 0) || 0,
-    totalProfit: quotes?.reduce((acc, q) => acc + Number(q.profit), 0) || 0,
-    averageTicket: quotes?.length ? (quotes.reduce((acc, q) => acc + Number(q.final_price), 0) / quotes.length) : 0,
   };
 
   const exportCSV = () => {
@@ -105,10 +107,10 @@ function HistoryPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total em Vendas" value={`R$ ${stats.totalSales.toFixed(2)}`} icon={ShoppingBag} />
+        <StatCard title="Vendas realizadas" value={`R$ ${stats.vendasRealizadas.toFixed(2)}`} icon={ShoppingBag} />
         <StatCard title="Total de Lucro" value={`R$ ${stats.totalProfit.toFixed(2)}`} icon={TrendingUp} color="text-green-500" />
         <StatCard title="Ticket Médio" value={`R$ ${stats.averageTicket.toFixed(2)}`} icon={DollarSign} />
-        <StatCard title="Quantidade" value={stats.totalQuotes} icon={ClipboardList} />
+        <StatCard title="Total Orçamentos" value={stats.totalQuotes} icon={ClipboardList} />
       </div>
 
       <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
