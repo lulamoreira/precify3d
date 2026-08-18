@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-export const Route = createFileRoute('/_authenticated/planos' as any)({
+export const Route = createFileRoute('/_authenticated/planos')({
   component: PlansPage,
 });
 

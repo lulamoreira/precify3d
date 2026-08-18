@@ -17,7 +17,7 @@ import { getStatusLabel, getStatusColor, type QuoteStatus } from '@/lib/quote-st
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 
-export const Route = createFileRoute('/_authenticated/orcamentos/$id' as any)({
+export const Route = createFileRoute('/_authenticated/orcamentos/$id')({
   component: QuoteViewPage,
 });
 

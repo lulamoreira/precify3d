@@ -13,7 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { differenceInDays } from 'date-fns';
 
-export const Route = createFileRoute('/_authenticated' as any)({
+export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
     // No SSR, we only check authentication on the client side for now
     // to avoid redirection loops during OAuth callback.

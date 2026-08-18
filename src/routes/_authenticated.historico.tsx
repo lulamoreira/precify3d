@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
-export const Route = createFileRoute('/_authenticated/historico' as any)({
+export const Route = createFileRoute('/_authenticated/historico')({
   component: HistoryPage,
 });
 

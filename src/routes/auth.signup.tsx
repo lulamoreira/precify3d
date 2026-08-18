@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export const Route = createFileRoute('/auth/signup' as any)({
+export const Route = createFileRoute('/auth/signup')({
   component: SignupPage,
 });
 

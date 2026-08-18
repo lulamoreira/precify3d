@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useServerFn } from '@tanstack/react-start';
 
-export const Route = createFileRoute('/_authenticated/' as any)({
+export const Route = createFileRoute('/_authenticated/')({
   component: DashboardPage,
 });
 

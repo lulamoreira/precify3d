@@ -27,7 +27,7 @@ import { getPricingFingerprint, resetJobFingerprint } from '@/lib/quota-utils';
 import { consumePricing } from '@/lib/quota.functions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
-export const Route = createFileRoute('/_authenticated/calculadora' as any)({
+export const Route = createFileRoute('/_authenticated/calculadora')({
   component: CalculatorPage,
 });
 
