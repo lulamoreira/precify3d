@@ -616,7 +616,7 @@ function CalculatorPage() {
                   <Button 
                     variant="outline" 
                     className="border-[#22223a] text-gray-400 hover:text-white gap-2 h-12 rounded-xl"
-                    onClick={handleSaveFull}
+                    onClick={() => handleSaveFull('simulacao')}
                     disabled={mutation.isPending}
                   >
                     <FileText size={18} />
@@ -629,7 +629,7 @@ function CalculatorPage() {
                         <div className="w-full">
                           <Button 
                             className="w-full bg-[#f97316] hover:bg-[#d96314] text-white gap-2 h-12 rounded-xl"
-                            onClick={handleSaveFull}
+                            onClick={() => handleSaveFull('orcamento')}
                             disabled={mutation.isPending || (!form.clientId && !form.client)}
                           >
                             <Save size={18} />
