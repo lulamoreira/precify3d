@@ -1241,14 +1241,32 @@ function CalculatorPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Produção total:</span>
-                  <span className="font-mono">{batchResult.mesasCheias} mesa{batchResult.mesasCheias !== 1 ? 's' : ''} cheia{batchResult.mesasCheias !== 1 ? 's' : ''} {batchResult.resto > 0 ? `+ 1 mesa com ${batchResult.resto}` : ''}</span>
+                  <span className="text-gray-400">Tempo da placa cheia:</span>
+                  <span className="font-mono text-white">
+                    {Math.floor(Number(form.plateTimeH))}h {Math.round(Number(form.plateTimeM))}min
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Tempo total:</span>
-                  <span className="font-mono">{Math.floor(batchResult.totalTime)}h {Math.round((batchResult.totalTime - Math.floor(batchResult.totalTime)) * 60)}min</span>
+                  <span className="text-gray-400">Tempo da placa incompleta:</span>
+                  <span className="font-mono text-white">
+                    {Math.floor(batchResult.horasParcial)}h {Math.round((batchResult.horasParcial - Math.floor(batchResult.horasParcial)) * 60)}min
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400 font-bold">Tempo total de impressão:</span>
+                  <span className="font-black text-[#f97316]">
+                    {Math.floor(batchResult.horasTotal)}h {Math.round((batchResult.horasTotal - Math.floor(batchResult.horasTotal)) * 60)}min
+                    <span className="text-[10px] text-gray-500 font-normal ml-1">
+                      (≈ {Math.ceil(batchResult.horasTotal / ((settings as any)?.hours_per_day || 20))} dias a {(settings as any)?.hours_per_day || 20}h/dia)
+                    </span>
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs border-t border-[#22223a] pt-2">
+                  <span className="text-gray-400">Tempo por peça:</span>
+                  <span className="font-mono text-white">{batchResult.horasPorPeca.toFixed(2)}h</span>
                 </div>
               </div>
+
             </CardContent>
           </Card>
         )}
