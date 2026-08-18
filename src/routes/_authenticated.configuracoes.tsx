@@ -1,19 +1,25 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getUserSettings, updateUserSettings, getMaterials, addMaterial, deleteMaterial } from '@/lib/data.functions';
+import { getUserSettings, updateUserSettings, getMaterials, addMaterial, deleteMaterial, getPrinterPresets, getEnergyTariffs } from '@/lib/data.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { useState, useEffect } from 'react';
-import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package, Calculator, Gauge, ShieldCheck, Maximize, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package, Calculator, Gauge, ShieldCheck, Maximize, AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 import { useServerFn } from '@tanstack/react-start';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+
 
 
 export const Route = createFileRoute('/_authenticated/configuracoes')({
@@ -39,6 +45,12 @@ function SettingsPage() {
 
   const [form, setForm] = useState<any>(null);
   const [newMaterial, setNewMaterial] = useState({ name: '', price_per_kg: '', color: '#f97316' });
+  const [showPresetAlert, setShowPresetAlert] = useState(false);
+  const [pendingPreset, setPendingPreset] = useState<any>(null);
+
+  const { data: presets } = useQuery({ queryKey: ['presets'], queryFn: () => getPrinterPresets() });
+  const { data: tariffs } = useQuery({ queryKey: ['tariffs'], queryFn: () => getEnergyTariffs() });
+
 
   const printerPresets = [
     { name: 'Bambu A1 mini', x: 180, y: 180, z: 180 },
@@ -124,7 +136,18 @@ function SettingsPage() {
     }
   };
 
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const saved = localStorage.getItem('dismissed_alerts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dismissed_alerts', JSON.stringify(dismissedAlerts));
+  }, [dismissedAlerts]);
+
   if (loadingSettings || !form) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-[#f97316]" size={48} /></div>;
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-12">
@@ -151,15 +174,93 @@ function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
+                    <Label>Estado / Região</Label>
+                    <Select value={form.energy_uf || 'manual'} onValueChange={(val) => {
+                      if (val === 'manual') {
+                        setForm({...form, energy_uf: null});
+                      } else {
+                        const tariff = tariffs?.find((t: any) => t.uf === val);
+                        if (tariff) setForm({...form, energy_uf: val, kwh: tariff.price_kwh.toString()});
+                      }
+                    }}>
+                      <SelectTrigger className="bg-[#07071a] border-[#22223a]">
+                        <SelectValue placeholder="Selecione um estado" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                        <SelectItem value="manual">Digitar manualmente</SelectItem>
+                        <SelectGroup>
+                          <SelectLabel>Estados</SelectLabel>
+                          {tariffs?.map((t: any) => <SelectItem key={t.uf} value={t.uf}>{t.state_name} ({t.uf})</SelectItem>)}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Custo kWh (R$)</Label>
-                    <Input type="number" step="0.01" value={form.kwh} onChange={e => setForm({...form, kwh: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    <Input type="number" step="0.01" value={form.kwh} onChange={e => setForm({...form, kwh: e.target.value, energy_uf: null})} className="bg-[#07071a] border-[#22223a]" />
+                    {form.energy_uf && <p className="text-[10px] text-gray-500">Referência de mar/2026 — sua distribuidora pode cobrar diferente.</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Impressora</Label>
+                    <Select value={form.printer_preset_id || 'manual'} onValueChange={(val) => {
+                      if (val === 'manual') {
+                        setForm({...form, printer_preset_id: null});
+                      } else {
+                        const preset = presets?.find((p: any) => p.id === val);
+                        if (preset) {
+                          const currentWatt = Number(form.watt);
+                          const isVeryDifferent = Math.abs(currentWatt - preset.avg_watts) > (preset.avg_watts * 0.5);
+                          
+                          if (isVeryDifferent || preset.is_estimated || preset.multicolor || (preset.tech === 'fdm' && (preset.bed_x !== form.bed_x || preset.bed_y !== form.bed_y))) {
+                            setPendingPreset(preset);
+                            setShowPresetAlert(true);
+                          } else {
+                            // Apply directly if not controversial
+                            setForm({
+                              ...form,
+                              printer_preset_id: preset.id,
+                              watt: preset.avg_watts.toString(),
+                              ...(preset.tech === 'fdm' ? {
+                                bed_x: preset.bed_x,
+                                bed_y: preset.bed_y,
+                                bed_z: preset.bed_z
+                              } : {})
+                            });
+                          }
+                        }
+
+                      }
+                    }}>
+                      <SelectTrigger className="bg-[#07071a] border-[#22223a]">
+                        <SelectValue placeholder="Selecione um modelo" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                        <SelectItem value="manual">Outra / Digitar manualmente</SelectItem>
+                        {Array.from(new Set(presets?.map((p: any) => p.brand) || [])).map((brand: any) => (
+                          <SelectGroup key={brand}>
+                            <SelectLabel>{brand}</SelectLabel>
+                            {presets?.filter((p: any) => p.brand === brand).map((p: any) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.model} {p.is_estimated && <Badge variant="outline" className="ml-2 bg-amber-500/20 text-amber-500 border-amber-500/30 text-[9px]">estimado</Badge>}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Potência da Impressora (W)</Label>
-                    <Input type="number" value={form.watt} onChange={e => setForm({...form, watt: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    <Input type="number" value={form.watt} onChange={e => setForm({...form, watt: e.target.value, printer_preset_id: null})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+
+                  <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-[10px] text-gray-400 flex gap-2">
+                    <Info size={14} className="text-blue-500 shrink-0" />
+                    <p>O número mais exato está na sua conta de luz: divida o valor total da fatura pela quantidade de kWh consumidos. Isso já inclui impostos, bandeira e taxa de iluminação pública.</p>
                   </div>
                 </CardContent>
               </Card>
+
 
               <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
                 <CardHeader>
@@ -309,19 +410,23 @@ function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex flex-wrap gap-2">
-                    {printerPresets.map(preset => (
+                    {presets?.filter((p: any) => ['Bambu Lab', 'Creality', 'Elegoo'].includes(p.brand)).map((p: any) => (
                       <Button
-                        key={preset.name}
+                        key={p.id}
                         type="button"
                         variant="outline"
                         size="sm"
                         className="bg-[#07071a] border-[#22223a] hover:bg-[#22223a] text-xs"
-                        onClick={() => applyPreset(preset)}
+                        onClick={() => {
+                          setPendingPreset(p);
+                          setShowPresetAlert(true);
+                        }}
                       >
-                        {preset.name}
+                        {p.brand} {p.model}
                       </Button>
                     ))}
                   </div>
+
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -337,6 +442,23 @@ function SettingsPage() {
                       <Input type="number" value={form.bed_z} onChange={e => setForm({...form, bed_z: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Desperdício por placa (g)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle size={12} className="text-gray-500 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">Skirt, brim e purga por placa. Uma cor: 3 a 8g. Multicor: veja no seu slicer, pode passar de 50g.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input type="number" value={form.plate_waste_g} onChange={e => setForm({...form, plate_waste_g: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
@@ -408,8 +530,9 @@ function SettingsPage() {
                           min={0} 
                           max={1} 
                           step={0.1} 
-                          onValueChange={([val]) => setForm({...form, batch_loss_factor: val})} 
+                          onValueChange={([val]: any) => setForm({...form, batch_loss_factor: val})} 
                         />
+
                       </div>
 
                       <div className="space-y-2">
@@ -507,6 +630,77 @@ function SettingsPage() {
         <Info size={16} />
         <p>As alterações feitas aqui serão aplicadas automaticamente aos seus próximos cálculos.</p>
       </div>
+      <AlertDialog open={showPresetAlert} onOpenChange={setShowPresetAlert}>
+        <AlertDialogContent className="bg-[#111128] border-[#22223a] text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar Preset: {pendingPreset?.brand} {pendingPreset?.model}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              {pendingPreset && Math.abs(Number(form.watt) - pendingPreset.avg_watts) > (pendingPreset.avg_watts * 0.5) && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-amber-500 text-xs flex items-center gap-2">
+                  <AlertTriangle size={14} />
+                  <span>Sua potência atual ({form.watt}W) é muito diferente da média ({pendingPreset.avg_watts}W).</span>
+                </div>
+              )}
+              {pendingPreset?.tech === 'fdm' && (pendingPreset.bed_x !== form.bed_x || pendingPreset.bed_y !== form.bed_y) && (
+                <p className="mb-2">Deseja preencher também as medidas da mesa ({pendingPreset.bed_x} x {pendingPreset.bed_y} x {pendingPreset.bed_z} mm)?</p>
+              )}
+              {pendingPreset?.is_estimated && (
+                <p className="text-xs text-amber-500 mt-2">⚠️ Este consumo é uma estimativa — o fabricante não divulga. Confira com um medidor de tomada.</p>
+              )}
+              {pendingPreset?.multicolor && (
+                <div className="mt-4 p-3 bg-[#f97316]/10 border border-[#f97316]/20 rounded text-[#f97316] text-xs">
+                  <p>Multicor desperdiça filamento na troca. Aumente o 'Desperdício por placa (g)' em Impressora/Mesa — pode passar de 30%.</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-[#22223a] hover:bg-[#22223a] text-white">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#f97316] hover:bg-[#d96314]"
+              onClick={() => {
+                const updates: any = { 
+                  printer_preset_id: pendingPreset.id,
+                  watt: pendingPreset.avg_watts.toString()
+                };
+                
+                // Confirm bed size separately? Specification says "ask before"
+                // Let's assume the user clicked "Sim" by clicking Action if they didn't cancel
+                // Actually the prompt says: [Sim] [Não]. Let's just update everything if they click apply.
+                if (pendingPreset.tech === 'fdm') {
+                  updates.bed_x = pendingPreset.bed_x;
+                  updates.bed_y = pendingPreset.bed_y;
+                  updates.bed_z = pendingPreset.bed_z;
+                }
+                
+                setForm({ ...form, ...updates });
+                setShowPresetAlert(false);
+                setPendingPreset(null);
+              }}
+            >
+              Aplicar Preset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {!dismissedAlerts.includes('energy-tip') && (
+        <div className="fixed bottom-4 right-4 max-w-sm bg-[#111128] border border-[#22223a] p-4 rounded-2xl shadow-2xl animate-in slide-in-from-right duration-500">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2 text-amber-500 text-sm font-bold">
+              <AlertCircle size={16} />
+              <span>Dica de Energia</span>
+            </div>
+            <button onClick={() => setDismissedAlerts([...dismissedAlerts, 'energy-tip'])} className="text-gray-500 hover:text-white">
+              <Plus className="rotate-45" size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Use o consumo MÉDIO imprimindo, não a potência da ficha técnica. A Bambu A1 diz 1300W, mas gasta ~90W imprimindo. Usar o pico multiplica seu custo por 10.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
+

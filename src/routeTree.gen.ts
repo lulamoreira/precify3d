@@ -25,6 +25,8 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 import { Route as AuthenticatedOrcamentosIdRouteImport } from './routes/_authenticated.orcamentos.$id'
 import { Route as AuthenticatedAdminUsuariosRouteImport } from './routes/_authenticated.admin.usuarios'
+import { Route as AuthenticatedAdminTarifasRouteImport } from './routes/_authenticated.admin.tarifas'
+import { Route as AuthenticatedAdminPresetsRouteImport } from './routes/_authenticated.admin.presets'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -109,6 +111,18 @@ const AuthenticatedAdminUsuariosRoute =
     path: '/usuarios',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminTarifasRoute =
+  AuthenticatedAdminTarifasRouteImport.update({
+    id: '/tarifas',
+    path: '/tarifas',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPresetsRoute =
+  AuthenticatedAdminPresetsRouteImport.update({
+    id: '/presets',
+    path: '/presets',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -122,6 +136,8 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/o/$token': typeof OTokenRoute
+  '/admin/presets': typeof AuthenticatedAdminPresetsRoute
+  '/admin/tarifas': typeof AuthenticatedAdminTarifasRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/orcamentos/$id': typeof AuthenticatedOrcamentosIdRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
@@ -138,6 +154,8 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/o/$token': typeof OTokenRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/presets': typeof AuthenticatedAdminPresetsRoute
+  '/admin/tarifas': typeof AuthenticatedAdminTarifasRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/orcamentos/$id': typeof AuthenticatedOrcamentosIdRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
@@ -157,6 +175,8 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/o/$token': typeof OTokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/presets': typeof AuthenticatedAdminPresetsRoute
+  '/_authenticated/admin/tarifas': typeof AuthenticatedAdminTarifasRoute
   '/_authenticated/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
   '/_authenticated/orcamentos/$id': typeof AuthenticatedOrcamentosIdRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
@@ -176,6 +196,8 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/signup'
     | '/o/$token'
+    | '/admin/presets'
+    | '/admin/tarifas'
     | '/admin/usuarios'
     | '/orcamentos/$id'
     | '/api/public/stripe-webhook'
@@ -192,6 +214,8 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/o/$token'
     | '/'
+    | '/admin/presets'
+    | '/admin/tarifas'
     | '/admin/usuarios'
     | '/orcamentos/$id'
     | '/api/public/stripe-webhook'
@@ -210,6 +234,8 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/o/$token'
     | '/_authenticated/'
+    | '/_authenticated/admin/presets'
+    | '/_authenticated/admin/tarifas'
     | '/_authenticated/admin/usuarios'
     | '/_authenticated/orcamentos/$id'
     | '/api/public/stripe-webhook'
@@ -338,15 +364,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUsuariosRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/tarifas': {
+      id: '/_authenticated/admin/tarifas'
+      path: '/tarifas'
+      fullPath: '/admin/tarifas'
+      preLoaderRoute: typeof AuthenticatedAdminTarifasRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/presets': {
+      id: '/_authenticated/admin/presets'
+      path: '/presets'
+      fullPath: '/admin/presets'
+      preLoaderRoute: typeof AuthenticatedAdminPresetsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminPresetsRoute: typeof AuthenticatedAdminPresetsRoute
+  AuthenticatedAdminTarifasRoute: typeof AuthenticatedAdminTarifasRoute
   AuthenticatedAdminUsuariosRoute: typeof AuthenticatedAdminUsuariosRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminPresetsRoute: AuthenticatedAdminPresetsRoute,
+  AuthenticatedAdminTarifasRoute: AuthenticatedAdminTarifasRoute,
   AuthenticatedAdminUsuariosRoute: AuthenticatedAdminUsuariosRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
