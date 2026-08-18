@@ -1289,7 +1289,43 @@ function CalculatorPage() {
                   <span className="text-gray-400">Tempo por peça:</span>
                   <span className="font-mono text-white">{batchResult.horasPorPeca.toFixed(2)}h</span>
                 </div>
+                {batchResult && (
+                  <div className="pt-4 border-t border-[#22223a] space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-400">Prazo de entrega (dias)</Label>
+                      <Input 
+                        type="number" 
+                        value={form.deliveryDays} 
+                        onChange={e => setForm({...form, deliveryDays: e.target.value})} 
+                        className="w-20 bg-[#07071a] border-[#22223a] h-8 text-white" 
+                      />
+                    </div>
+                    {(() => {
+                      const printDays = Math.ceil(batchResult.horasTotal / ((settings as any)?.hours_per_day || 20));
+                      const suggestedDays = printDays + 3;
+                      const currentDays = Number(form.deliveryDays);
+                      
+                      return (
+                        <div className="space-y-2">
+                          <button 
+                            className="text-[10px] text-[#f97316] hover:underline"
+                            onClick={() => setForm(f => ({ ...f, deliveryDays: suggestedDays.toString() }))}
+                          >
+                            Só a impressão leva ~{printDays} dias. Usar {suggestedDays}?
+                          </button>
+                          {currentDays > 0 && currentDays < printDays && (
+                            <div className="flex items-center gap-2 text-amber-500 text-[10px] font-bold bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                              <AlertCircle size={12} />
+                              <span>Você prometeu {currentDays} dias, mas só a impressão leva {printDays}.</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
+
 
             </CardContent>
           </Card>
