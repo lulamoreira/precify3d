@@ -141,28 +141,6 @@ function CalculatorPage() {
     }
   };
 
-  const handleSTLFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.stl')) {
-      toast.error('Por favor, selecione um arquivo .stl');
-      return;
-    }
-
-    setStlLoading(true);
-    setStlFileName(file.name);
-    
-    try {
-      const buffer = await file.arrayBuffer();
-      const tris = parseSTLBuffer(buffer);
-      const stats = analyzeTriangles(tris);
-      setStlData(stats);
-      toast.success('Arquivo STL analisado com sucesso!');
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro ao processar o arquivo STL.');
-    } finally {
-      setStlLoading(false);
-    }
-  };
 
   const calculate = () => {
     if (!form.weightG || (!form.h && !form.m)) {
