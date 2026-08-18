@@ -448,7 +448,7 @@ function CalculatorPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: '', setupMinutes: '', postProcessingPriceHour: '', postProcessingMinutes: '', useV2: false }); setStlData(null); setResult(null); }}>
+               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2' }); setStlData(null); setResult(null); }}>
                  Limpar
                </Button>
                <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" onClick={calculate}>
