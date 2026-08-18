@@ -357,7 +357,7 @@ function HistoryPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="text-gray-500 hover:text-[#f97316] hover:bg-[#f97316]/10"
+                        className="text-gray-500 hover:text-blue-500 hover:bg-blue-500/10"
                         asChild
                       >
                         <Link to="/orcamentos/$id" params={{ id: quote.id }}>
