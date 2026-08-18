@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
-export const Route = createFileRoute('/_authenticated/perfil')({
+export const Route = createFileRoute('/_authenticated/perfil' as any)({
   component: ProfilePage,
 });
 

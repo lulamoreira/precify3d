@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 
-export const Route = createFileRoute('/o/$token')({
+export const Route = createFileRoute('/o/$token' as any)({
   component: PublicQuoteViewPage,
 });
 

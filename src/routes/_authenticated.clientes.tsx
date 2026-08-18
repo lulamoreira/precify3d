@@ -14,7 +14,7 @@ import { useServerFn } from '@tanstack/react-start';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-export const Route = createFileRoute('/_authenticated/clientes')({
+export const Route = createFileRoute('/_authenticated/clientes' as any)({
   component: ClientsPage,
 });
 

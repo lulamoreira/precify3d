@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, CreditCard, Activity } from 'lucide-react';
 
-export const Route = createFileRoute('/_authenticated/admin/')({
+export const Route = createFileRoute('/_authenticated/admin/' as any)({
   component: AdminDashboard,
 });
 

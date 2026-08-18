@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useServerFn } from '@tanstack/react-start';
 
 
-export const Route = createFileRoute('/_authenticated/configuracoes')({
+export const Route = createFileRoute('/_authenticated/configuracoes' as any)({
   component: SettingsPage,
 });
 
