@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, redirect } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X, UserPlus, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -108,7 +108,8 @@ function AuthenticatedLayout() {
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/' as const },
     { label: 'Calculadora', icon: Calculator, to: '/calculadora' as const },
-    { label: 'Histórico', icon: History, to: '/historico' as const },
+    { label: 'Orçamentos', icon: FileText, to: '/historico' as const },
+    { label: 'Clientes', icon: UserPlus, to: '/clientes' as const },
     { label: 'Configurações', icon: Settings, to: '/configuracoes' as const },
   ];
 
