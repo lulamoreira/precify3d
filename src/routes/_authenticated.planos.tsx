@@ -26,10 +26,12 @@ function PlansPage() {
 
   const checkoutMutation = useMutation({
     mutationFn: (planCode: string) => checkoutFn({
-      planCode,
-      billingPeriod,
-      successUrl: `${window.location.origin}/dashboard?checkout=success`,
-      cancelUrl: window.location.href,
+      data: {
+        planCode,
+        billingPeriod,
+        successUrl: `${window.location.origin}/dashboard?checkout=success`,
+        cancelUrl: window.location.href,
+      }
     }),
     onSuccess: (data) => {
       if (data.url) {
