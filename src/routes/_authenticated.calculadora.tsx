@@ -14,7 +14,8 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, parseGCode, estimateWeightV2, estimateTimeHours, type STLData } from '@/lib/stl-utils';
 import { calculatePricing, calculatePricingV2, type PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle } from 'lucide-react';
+import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle, Save, FileText } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import * as fflate from 'fflate';
 import { useServerFn } from '@tanstack/react-start';
@@ -185,7 +186,7 @@ function CalculatorPage() {
     onError: (err: any) => toast.error('Erro ao salvar orçamento: ' + err.message)
   });
 
-  const handleSave = () => {
+  const handleSave = (kind: 'simulacao' | 'orcamento') => {
     if (!result) return;
     mutation.mutate({
       client: form.client,
@@ -217,7 +218,12 @@ function CalculatorPage() {
       tax_value: result.taxValue,
       cost_post: result.costPost,
       cost_setup: result.costSetup,
-      engine_version: form.useV2 ? 'v2' : 'v1'
+      engine_version: form.useV2 ? 'v2' : 'v1',
+
+      // Classification Fields
+      kind: kind,
+      status: kind === 'simulacao' ? 'simulacao' : 'rascunho',
+      status_changed_at: new Date().toISOString()
     });
   };
 
