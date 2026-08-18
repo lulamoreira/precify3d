@@ -158,17 +158,18 @@ function HistoryPage() {
   const exportCSV = () => {
     if (!quotes?.length) return;
     
-    const headers = ['Data', 'Cliente', 'Peça', 'Material', 'Peso(g)', 'Tempo(h)', 'Custo', 'Preço Final', 'Lucro'];
-    const rows = quotes.map(q => [
+    const headers = ['Data', 'Tipo', 'Status', 'Cliente', 'Peça', 'Material', 'Preço Sugerido', 'Valor Fechado', 'Data Venda', 'Lucro'];
+    const rows = filteredQuotes.map(q => [
       format(new Date(q.created_at), 'dd/MM/yyyy HH:mm'),
-      q.client,
+      q.kind === 'simulacao' ? 'Simulação' : 'Orçamento',
+      getStatusLabel(q.status as QuoteStatus),
+      q.client || '',
       q.project,
       q.material_name,
-      q.weight_g,
-      q.time_hours.toFixed(2),
-      q.subtotal.toFixed(2),
       q.final_price.toFixed(2),
-      q.profit.toFixed(2)
+      valorVenda(q).toFixed(2),
+      q.sold_at ? format(new Date(q.sold_at), 'dd/MM/yyyy') : '',
+      lucroVenda(q).toFixed(2)
     ]);
 
     const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
@@ -258,11 +259,10 @@ function HistoryPage() {
                 <TableHead className="text-gray-400">Data</TableHead>
                 <TableHead className="text-gray-400">Cliente</TableHead>
                 <TableHead className="text-gray-400">Peça</TableHead>
-                <TableHead className="text-gray-400">Material</TableHead>
+                <TableHead className="text-gray-400">Status</TableHead>
                 <TableHead className="text-gray-400">Peso</TableHead>
-                <TableHead className="text-gray-400">Tempo</TableHead>
                 <TableHead className="text-gray-400">Custo</TableHead>
-                <TableHead className="text-gray-400">Preço Final</TableHead>
+                <TableHead className="text-gray-400">Preço</TableHead>
                 <TableHead className="text-gray-400">Lucro</TableHead>
                 <TableHead className="text-gray-400 text-right">Ações</TableHead>
               </TableRow>
@@ -276,15 +276,70 @@ function HistoryPage() {
                 </TableRow>
               ) : filteredQuotes.map((quote) => (
                 <TableRow key={quote.id} className="border-[#22223a] hover:bg-[#22223a]/50">
-                  <TableCell className="text-gray-400 text-xs">{format(new Date(quote.created_at), 'dd/MM/yy HH:mm')}</TableCell>
-                  <TableCell className="font-medium">{quote.client}</TableCell>
-                  <TableCell>{quote.project}</TableCell>
-                  <TableCell>{quote.material_name}</TableCell>
-                  <TableCell>{quote.weight_g}g</TableCell>
-                  <TableCell>{quote.time_hours.toFixed(1)}h</TableCell>
-                  <TableCell>R$ {Number(quote.subtotal).toFixed(2)}</TableCell>
-                  <TableCell className="font-bold text-[#f97316]">R$ {Number(quote.final_price).toFixed(2)}</TableCell>
-                  <TableCell className="text-green-500 font-medium">R$ {Number(quote.profit).toFixed(2)}</TableCell>
+                  <TableCell className="text-gray-400 text-[10px]">{format(new Date(quote.created_at), 'dd/MM/yy HH:mm')}</TableCell>
+                  <TableCell className="font-medium text-sm">{quote.client || '-'}</TableCell>
+                  <TableCell className="text-sm truncate max-w-[120px]">{quote.project}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Badge className={cn("cursor-pointer hover:opacity-80 transition-all border shadow-sm", getStatusColor(quote.status as QuoteStatus))}>
+                          {getStatusLabel(quote.status as QuoteStatus)}
+                        </Badge>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-[#111128] border-[#22223a] text-white">
+                        <DropdownMenuLabel className="text-xs text-gray-500">Mudar status para:</DropdownMenuLabel>
+                        
+                        {quote.status === 'simulacao' && (
+                          <>
+                            <DropdownMenuItem className="focus:bg-[#f97316]/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'rascunho')}>Virou orçamento</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-green-500/10 cursor-pointer text-green-500" onClick={() => handleStatusChange(quote, 'vendido')}>Marcar como vendido</DropdownMenuItem>
+                          </>
+                        )}
+
+                        {quote.status === 'rascunho' && (
+                          <>
+                            <DropdownMenuItem className="focus:bg-blue-500/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'enviado')}>Enviado</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-red-500/10 cursor-pointer text-red-500" onClick={() => handleStatusChange(quote, 'cancelado')}>Cancelado</DropdownMenuItem>
+                          </>
+                        )}
+
+                        {quote.status === 'enviado' && (
+                          <>
+                            <DropdownMenuItem className="focus:bg-green-500/10 cursor-pointer text-green-500" onClick={() => handleStatusChange(quote, 'aprovado')}>Aprovado</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-red-500/10 cursor-pointer text-red-500" onClick={() => handleStatusChange(quote, 'recusado')}>Recusado</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-amber-500/10 cursor-pointer text-amber-500" onClick={() => handleStatusChange(quote, 'expirado')}>Expirado</DropdownMenuItem>
+                          </>
+                        )}
+
+                        {quote.status === 'aprovado' && (
+                          <>
+                            <DropdownMenuItem className="focus:bg-green-500/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'entregue')}>Entregue</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-red-500/10 cursor-pointer text-red-500" onClick={() => handleStatusChange(quote, 'cancelado')}>Cancelado</DropdownMenuItem>
+                          </>
+                        )}
+
+                        {(STATUS_MORTO.includes(quote.status)) && (
+                          <DropdownMenuItem className="focus:bg-[#f97316]/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'enviado')}>Reabrir</DropdownMenuItem>
+                        )}
+
+                        {quote.status === 'nao_classificado' && (
+                          <>
+                            <DropdownMenuItem className="focus:bg-green-500/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'aprovado')}>Foi venda</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-blue-500/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'rascunho')}>Foi orçamento</DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-gray-500/10 cursor-pointer" onClick={() => handleStatusChange(quote, 'simulacao')}>Só simulação</DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                  <TableCell className="text-sm">{quote.weight_g}g</TableCell>
+                  <TableCell className="text-sm text-gray-400">R$ {Number(quote.subtotal).toFixed(2)}</TableCell>
+                  <TableCell className="text-sm font-bold text-[#f97316]">
+                    R$ {valorVenda(quote).toFixed(2)}
+                  </TableCell>
+                  <TableCell className={cn("text-sm font-medium", lucroVenda(quote) >= 0 ? "text-green-500" : "text-red-500")}>
+                    R$ {lucroVenda(quote).toFixed(2)}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button 
                       variant="ghost" 
