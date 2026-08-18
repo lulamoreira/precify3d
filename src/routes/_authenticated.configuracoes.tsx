@@ -11,7 +11,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package, Calculator, Gauge, ShieldCheck, Maximize, AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 import { useServerFn } from '@tanstack/react-start';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
