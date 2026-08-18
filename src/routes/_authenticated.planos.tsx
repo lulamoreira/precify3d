@@ -16,11 +16,29 @@ export const Route = createFileRoute('/_authenticated/planos' as any)({
 
 function PlansPage() {
   const getPlansFn = useServerFn(getPlans);
+  const checkoutFn = useServerFn(createCheckoutSession);
   const [billingPeriod, setBillingPeriod] = useState<'month' | 'year'>('month');
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ['plans'],
     queryFn: () => getPlansFn(),
+  });
+
+  const checkoutMutation = useMutation({
+    mutationFn: (planCode: string) => checkoutFn({
+      planCode,
+      billingPeriod,
+      successUrl: `${window.location.origin}/dashboard?checkout=success`,
+      cancelUrl: window.location.href,
+    }),
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao iniciar checkout: " + (error.message || "Tente novamente"));
+    }
   });
 
   if (isLoading) {
