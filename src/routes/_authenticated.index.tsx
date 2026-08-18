@@ -1,13 +1,14 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getQuotes } from '@/lib/data.functions';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { format, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from 'date-fns';
-import { DollarSign, TrendingUp, ShoppingBag, ClipboardList, Plus, Target, PieChart, Activity } from 'lucide-react';
-import { isVenda, isAberto, valorVenda, lucroVenda } from '@/lib/quote-status';
+import { DollarSign, TrendingUp, ShoppingBag, ClipboardList, Plus, Target, Activity } from 'lucide-react';
+import { isVenda, isAberto, valorVenda, lucroVenda, getStatusColor, getStatusLabel, type QuoteStatus } from '@/lib/quote-status';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useServerFn } from '@tanstack/react-start';
 
@@ -128,8 +129,8 @@ function DashboardPage() {
                   itemStyle={{ color: '#f97316' }}
                 />
                 <Legend />
-                <Bar dataKey="simulacoes" name="Simulações" fill="#374151" radius={[4, 4, 0, 0]} barSize={30} />
-                <Bar dataKey="orcamentos" name="Orçamentos" fill="#f97316" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="simulacoes" name="Simulações" fill="#374151" stackId="a" radius={[0, 0, 0, 0]} barSize={30} />
+                <Bar dataKey="orcamentos" name="Orçamentos" fill="#f97316" stackId="a" radius={[4, 4, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -148,8 +149,10 @@ function DashboardPage() {
                     <p className="text-xs text-gray-400">{quote.client}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[#f97316] font-bold">R$ {Number(quote.final_price).toFixed(2)}</p>
-                    <p className="text-[10px] text-gray-500">{format(new Date(quote.created_at), 'dd/MM HH:mm')}</p>
+                    <p className="text-[#f97316] font-bold">R$ {valorVenda(quote).toFixed(2)}</p>
+                    <Badge variant="outline" className={cn("text-[8px] py-0 px-1 mt-1", getStatusColor(quote.status as QuoteStatus))}>
+                      {getStatusLabel(quote.status as QuoteStatus)}
+                    </Badge>
                   </div>
                 </div>
               ))}
@@ -180,7 +183,12 @@ function DashboardPage() {
                   <TableCell>{quote.client}</TableCell>
                   <TableCell>{quote.project}</TableCell>
                   <TableCell>{quote.material_name}</TableCell>
-                  <TableCell className="font-bold text-[#f97316]">R$ {Number(quote.final_price).toFixed(2)}</TableCell>
+                  <TableCell className="font-bold text-[#f97316]">R$ {valorVenda(quote).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={cn("text-[10px]", getStatusColor(quote.status as QuoteStatus))}>
+                      {getStatusLabel(quote.status as QuoteStatus)}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-gray-400 text-sm">{format(new Date(quote.created_at), 'dd/MM/yyyy')}</TableCell>
                 </TableRow>
               ))}
