@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, redirect } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X, Users, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -108,7 +108,8 @@ function AuthenticatedLayout() {
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, to: '/' as const },
     { label: 'Calculadora', icon: Calculator, to: '/calculadora' as const },
-    { label: 'Histórico', icon: History, to: '/historico' as const },
+    { label: 'Orçamentos', icon: History, to: '/historico' as const },
+    { label: 'Clientes', icon: Users, to: '/clientes' as const },
     { label: 'Configurações', icon: Settings, to: '/configuracoes' as const },
   ];
 
@@ -158,7 +159,7 @@ function AuthenticatedLayout() {
           </div>
         </aside>
       )}
-      <main className={cn("flex-1 flex flex-col", !isMobile && "pl-64")}>
+      <main className={cn("flex-1 flex flex-col min-h-screen", !isMobile && "pl-64")}>
         {isMobile && (
           <header className="bg-[#111128] border-b border-[#22223a] p-4 flex justify-between items-center sticky top-0 z-50">
             <h1 className="text-xl font-bold text-white flex items-center gap-2">

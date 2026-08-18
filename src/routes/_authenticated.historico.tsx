@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getQuotes, deleteQuote, updateQuoteStatus } from '@/lib/data.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -149,9 +149,9 @@ function HistoryPage() {
   const [showUnclassifiedBanner, setShowUnclassifiedBanner] = useState(true);
 
   const stats = {
-    vendasRealizadas: quotes?.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) || 0,
-    totalProfit: quotes?.filter(isVenda).reduce((acc, q) => acc + lucroVenda(q), 0) || 0,
-    averageTicket: quotes?.filter(isVenda).length ? (quotes.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) / quotes.filter(isVenda).length) : 0,
+    vendasRealizadas: quotes?.filter(isVenda).reduce((acc: number, q: any) => acc + valorVenda(q), 0) || 0,
+    totalProfit: quotes?.filter(isVenda).reduce((acc: number, q: any) => acc + lucroVenda(q), 0) || 0,
+    averageTicket: quotes?.filter(isVenda).length ? (quotes.filter(isVenda).reduce((acc: number, q: any) => acc + valorVenda(q), 0) / (quotes.filter(isVenda).length || 1)) : 0,
     totalQuotes: quotes?.length || 0,
   };
 
@@ -248,7 +248,7 @@ function HistoryPage() {
         <StatCard title="Vendas realizadas" value={`R$ ${stats.vendasRealizadas.toFixed(2)}`} icon={ShoppingBag} />
         <StatCard title="Total de Lucro" value={`R$ ${stats.totalProfit.toFixed(2)}`} icon={TrendingUp} color="text-green-500" />
         <StatCard title="Ticket Médio" value={`R$ ${stats.averageTicket.toFixed(2)}`} icon={DollarSign} />
-        <StatCard title="Total Orçamentos" value={stats.totalQuotes} icon={ClipboardList} />
+        <StatCard title="Total Registros" value={stats.totalQuotes} icon={ClipboardList} />
       </div>
 
       <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
@@ -276,9 +276,21 @@ function HistoryPage() {
                 </TableRow>
               ) : filteredQuotes.map((quote) => (
                 <TableRow key={quote.id} className="border-[#22223a] hover:bg-[#22223a]/50">
-                  <TableCell className="text-gray-400 text-[10px]">{format(new Date(quote.created_at), 'dd/MM/yy HH:mm')}</TableCell>
-                  <TableCell className="font-medium text-sm">{quote.client || '-'}</TableCell>
-                  <TableCell className="text-sm truncate max-w-[120px]">{quote.project}</TableCell>
+                  <TableCell className="text-gray-400 text-[10px]">
+                    <Link to="/orcamentos/$id" params={{ id: quote.id }} className="hover:text-[#f97316] transition-colors">
+                      {format(new Date(quote.created_at), 'dd/MM/yy HH:mm')}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="font-medium text-sm">
+                    <Link to="/orcamentos/$id" params={{ id: quote.id }} className="hover:underline">
+                      {quote.client || '-'}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-sm truncate max-w-[120px]">
+                    <Link to="/orcamentos/$id" params={{ id: quote.id }} className="hover:underline">
+                      {quote.project}
+                    </Link>
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -341,14 +353,26 @@ function HistoryPage() {
                     R$ {lucroVenda(quote).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-gray-500 hover:text-red-500 hover:bg-red-500/10"
-                      onClick={() => { if(confirm('Excluir este orçamento?')) deleteMutation.mutate(quote.id); }}
-                    >
-                      <Trash2 size={18} />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-500 hover:text-blue-500 hover:bg-blue-500/10"
+                        asChild
+                      >
+                        <Link to="/orcamentos/$id" params={{ id: quote.id }}>
+                          <Download size={18} />
+                        </Link>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-500 hover:text-red-500 hover:bg-red-500/10"
+                        onClick={() => { if(confirm('Excluir este orçamento?')) deleteMutation.mutate(quote.id); }}
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

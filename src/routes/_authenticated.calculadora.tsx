@@ -1,7 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useRef, useEffect } from 'react';
+import { format, addDays } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMaterials, getUserSettings, saveQuote } from '@/lib/data.functions';
+import { getClients, saveFullQuote } from '@/lib/quotes.functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, parseGCode, estimateWeightV2, estimateTimeHours, type STLData } from '@/lib/stl-utils';
 import { calculatePricing, calculatePricingV2, type PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle, Save, FileText } from 'lucide-react';
+import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle, Save, FileText, Plus, UserPlus, Trash2, GripVertical } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import * as fflate from 'fflate';
@@ -26,12 +28,16 @@ export const Route = createFileRoute('/_authenticated/calculadora')({
 
 function CalculatorPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const getMaterialsFn = useServerFn(getMaterials);
   const getUserSettingsFn = useServerFn(getUserSettings);
-  const saveQuoteFn = useServerFn(saveQuote);
+  const getClientsFn = useServerFn(getClients);
+  const saveFullQuoteFn = useServerFn(saveFullQuote);
 
   const { data: materials } = useQuery({ queryKey: ['materials'], queryFn: () => getMaterialsFn() });
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: () => getUserSettingsFn() });
+  const { data: clientsData } = useQuery({ queryKey: ['clients'], queryFn: () => getClientsFn() });
+  const clients = clientsData?.data || [];
 
   const [form, setForm] = useState({
     client: '',
@@ -52,8 +58,17 @@ function CalculatorPage() {
     setupMinutes: '',
     postProcessingPriceHour: '',
     postProcessingMinutes: '',
-    useV2: false
+    useV2: false,
+    clientId: '',
+    validUntil: format(addDays(new Date(), 15), 'yyyy-MM-dd'),
+    deliveryDays: '7',
+    paymentTerms: '50% entrada, 50% entrega',
+    shippingPrice: '0',
+    publicNotes: '',
+    title: ''
   });
+
+  const [items, setItems] = useState<any[]>([]);
 
   const [stlData, setStlData] = useState<STLData | null>(null);
   const [stlLoading, setStlLoading] = useState(false);
@@ -178,53 +193,69 @@ function CalculatorPage() {
   };
 
   const mutation = useMutation({
-    mutationFn: (data: any) => saveQuoteFn({ data }),
-    onSuccess: () => {
+    mutationFn: (data: any) => saveFullQuoteFn({ data }),
+    onSuccess: (quote: any) => {
       toast.success('Orçamento salvo com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      // Redirecionamento temporário para histórico até a rota de ID estar pronta
+      navigate({ to: '/historico' });
     },
-    onError: (err: any) => toast.error('Erro ao salvar orçamento: ' + err.message)
+    onError: (err: any) => toast.error('Erro ao salvar: ' + err.message)
   });
 
-  const handleSave = (kind: 'simulacao' | 'orcamento') => {
+  const addItem = () => {
     if (!result) return;
-    mutation.mutate({
-      client: form.client,
-      project: form.project,
-      material_name: currentMat?.name || 'Desconhecido',
+    const newItem = {
+      name: form.project || 'Peça sem nome',
+      description: `Material: ${currentMat?.name || 'Não definido'}`,
+      quantity: Number(form.quantity),
+      material_name: currentMat?.name,
       weight_g: Number(form.weightG),
       time_hours: (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
-      failure_pct: Number(form.failurePct),
-      margin_pct: Number(form.marginPct),
-      discount_pct: Number(form.discountPct),
-      packaging: Number(form.packaging),
-      platform_fee: Number(form.platformFee),
-      platform_name: form.platformName,
-      cost_material: result.costMaterial,
-      cost_energy: result.costEnergy,
-      cost_labor: result.costLabor,
-      cost_machine: result.costMachine,
-      subtotal: result.subtotal,
-      margin_value: result.marginValue,
-      platform_fee_value: result.platformFeeValue,
-      discount_value: result.discountValue,
-      final_price: result.finalPrice,
-      profit: result.profit,
-      notes: form.notes,
-      
-      // V2 Fields
-      quantity: Number(form.quantity),
-      tax_pct: Number(form.taxPct),
-      tax_value: result.taxValue,
-      cost_post: result.costPost,
-      cost_setup: result.costSetup,
-      engine_version: form.useV2 ? 'v2' : 'v1',
+      unit_price: result.finalPriceUnit || result.finalPrice,
+      total_price: result.finalPrice,
+      cost_direct: result.subtotal / Number(form.quantity),
+      profit: result.profitUnit || result.profit
+    };
+    setItems([...items, newItem]);
+    toast.success('Peça adicionada ao orçamento!');
+  };
 
-      // Classification Fields
-      kind: kind,
+  const removeItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleSaveFull = (kind: 'simulacao' | 'orcamento' = 'orcamento') => {
+    if (items.length === 0) {
+      toast.error('Adicione pelo menos uma peça ao orçamento.');
+      return;
+    }
+
+    const subtotal = items.reduce((acc, item) => acc + item.total_price, 0);
+    const shipping = Number(form.shippingPrice);
+    const finalPrice = subtotal + shipping;
+
+    mutation.mutate({
+      title: form.title || `${kind === 'simulacao' ? 'Simulação' : 'Orçamento'} - ${new Date().toLocaleDateString()}`,
+      client_id: form.clientId || null,
+      client: clients.find((c: any) => c.id === form.clientId)?.name || form.client || 'Simulação Avulsa',
+      project: items[0]?.name || 'Múltiplas peças',
+      final_price: finalPrice,
+      shipping_price: shipping,
+      valid_until: form.validUntil,
+      delivery_days: Number(form.deliveryDays),
+      payment_terms: form.paymentTerms,
+      public_notes: form.publicNotes,
       status: kind === 'simulacao' ? 'simulacao' : 'rascunho',
-      status_changed_at: new Date().toISOString()
+      kind: kind,
+      items: items
     });
+  };
+
+  const handleSaveLegacy = (kind: 'simulacao' | 'orcamento') => {
+    if (!result) return;
+    // ... manter lógica original de simulação se necessário ou usar saveFullQuote simplificado
+    handleSaveFull();
   };
 
   const handleMarketplace = (name: string) => {
@@ -326,7 +357,14 @@ function CalculatorPage() {
             <div className="grid grid-cols-3 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Cliente</Label>
-                <Input placeholder="Ex: João" value={form.client} onChange={e => setForm({...form, client: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Select value={form.clientId} onValueChange={v => setForm({...form, clientId: v})}>
+                  <SelectTrigger className="bg-[#07071a] border-[#22223a]">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Projeto</Label>
@@ -454,14 +492,68 @@ function CalculatorPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2' }); setStlData(null); setResult(null); }}>
+               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', clientId: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2', validUntil: format(addDays(new Date(), 15), 'yyyy-MM-dd'), deliveryDays: '7', paymentTerms: '', shippingPrice: '0', publicNotes: '', title: '' }); setStlData(null); setResult(null); setItems([]); }}>
                  Limpar
                </Button>
-               <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" onClick={calculate}>
-                 <Zap size={18} />
-                 Calcular Preço
-               </Button>
+                 <Button className="flex-1 bg-[#111128] border border-[#22223a] hover:bg-[#22223a] gap-2 text-white" onClick={addItem} disabled={!result}>
+                   <Plus size={18} />
+                   Adicionar Peça
+                 </Button>
+                 <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" onClick={calculate}>
+                   <Zap size={18} />
+                   Calcular Preço
+                 </Button>
             </div>
+
+            {items.length > 0 && (
+              <div className="mt-8 space-y-4 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400">Itens do Orçamento ({items.length})</h3>
+                  <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300" onClick={() => setItems([])}>
+                    Limpar Tudo
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {items.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-[#07071a] border border-[#22223a] rounded-xl group">
+                      <div className="p-2 bg-[#22223a] rounded-lg">
+                        <Package size={16} className="text-[#f97316]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate">{item.name}</p>
+                        <p className="text-[10px] text-gray-500 truncate">{item.description} • {item.quantity}un</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">R$ {item.total_price.toFixed(2)}</p>
+                        <p className="text-[10px] text-green-500">Lucro: R$ {item.profit.toFixed(2)}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(idx)}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="p-4 bg-[#07071a] border border-[#f97316]/30 rounded-xl space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-gray-500">Título do Orçamento</Label>
+                      <Input placeholder="Ex: Orçamento #2024-001" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className="h-8 bg-transparent border-[#22223a] text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase text-gray-500">Frete (R$)</Label>
+                      <Input type="number" value={form.shippingPrice} onChange={e => setForm({...form, shippingPrice: e.target.value})} className="h-8 bg-transparent border-[#22223a] text-xs" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-[#22223a]">
+                    <span className="text-sm font-bold">TOTAL GERAL</span>
+                    <span className="text-xl font-black text-[#f97316]">
+                      R$ {(items.reduce((acc, i) => acc + i.total_price, 0) + Number(form.shippingPrice)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -506,8 +598,8 @@ function CalculatorPage() {
                 </p>
                 <h2 className="text-5xl font-black text-white">R$ {result.finalPrice.toFixed(2)}</h2>
                 <div className="flex justify-center gap-4 pt-2">
-                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {result.realMarginPct.toFixed(1)}%</span>
-                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Lucro: R$ {result.profit.toFixed(2)}</span>
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {(result?.realMarginPct || 0).toFixed(1)}%</span>
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Lucro: R$ {(result?.profit || 0).toFixed(2)}</span>
                 </div>
                 {result.isLoss && (
                   <p className="text-[10px] text-white/90 font-bold mt-2">Ponto de Equilíbrio: R$ {result.breakEvenPrice.toFixed(2)}</p>
@@ -525,11 +617,11 @@ function CalculatorPage() {
                   <Button 
                     variant="outline" 
                     className="border-[#22223a] text-gray-400 hover:text-white gap-2 h-12 rounded-xl"
-                    onClick={() => handleSave('simulacao')}
+                    onClick={() => handleSaveFull('simulacao')}
                     disabled={mutation.isPending}
                   >
                     <FileText size={18} />
-                    Salvar Simulação
+                    Salvar como Simulação
                   </Button>
 
                   <TooltipProvider>
@@ -538,15 +630,15 @@ function CalculatorPage() {
                         <div className="w-full">
                           <Button 
                             className="w-full bg-[#f97316] hover:bg-[#d96314] text-white gap-2 h-12 rounded-xl"
-                            onClick={() => handleSave('orcamento')}
-                            disabled={mutation.isPending || !form.client}
+                            onClick={() => handleSaveFull('orcamento')}
+                            disabled={mutation.isPending || (!form.clientId && !form.client)}
                           >
                             <Save size={18} />
-                            Salvar Orçamento
+                            Gerar Orçamento Profissional
                           </Button>
                         </div>
                       </TooltipTrigger>
-                      {!form.client && (
+                      {!form.clientId && !form.client && (
                         <TooltipContent className="bg-[#111128] border-[#22223a] text-white">
                           <p>Selecione um cliente para gerar um orçamento</p>
                         </TooltipContent>

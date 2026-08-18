@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          address: string | null
+          company: string | null
+          created_at: string
+          document: string | null
+          email: string | null
+          id: string
+          logo_path: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          company?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          logo_path?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          company?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          logo_path?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       materials: {
         Row: {
           color: string
@@ -48,47 +93,143 @@ export type Database = {
         Row: {
           address_complement: string | null
           address_number: string | null
+          brand_color: string | null
           cep: string | null
           city: string | null
+          company_document: string | null
+          company_email: string | null
+          company_logo_path: string | null
+          company_name: string | null
+          company_phone: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
           phone: string | null
+          quote_counter: number
           role: string
           updated_at: string
         }
         Insert: {
           address_complement?: string | null
           address_number?: string | null
+          brand_color?: string | null
           cep?: string | null
           city?: string | null
+          company_document?: string | null
+          company_email?: string | null
+          company_logo_path?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           email: string
           full_name?: string | null
           id: string
           phone?: string | null
+          quote_counter?: number
           role?: string
           updated_at?: string
         }
         Update: {
           address_complement?: string | null
           address_number?: string | null
+          brand_color?: string | null
           cep?: string | null
           city?: string | null
+          company_document?: string | null
+          company_email?: string | null
+          company_logo_path?: string | null
+          company_name?: string | null
+          company_phone?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
           phone?: string | null
+          quote_counter?: number
           role?: string
           updated_at?: string
         }
         Relationships: []
       }
+      quote_items: {
+        Row: {
+          cost_direct: number | null
+          created_at: string
+          description: string | null
+          id: string
+          material_name: string | null
+          name: string
+          position: number
+          preview_png: string | null
+          profit: number | null
+          quantity: number
+          quote_id: string
+          stl_filename: string | null
+          stl_path: string | null
+          stl_size_bytes: number | null
+          time_hours: number | null
+          total_price: number
+          unit_price: number
+          user_id: string
+          weight_g: number | null
+        }
+        Insert: {
+          cost_direct?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          material_name?: string | null
+          name: string
+          position?: number
+          preview_png?: string | null
+          profit?: number | null
+          quantity?: number
+          quote_id: string
+          stl_filename?: string | null
+          stl_path?: string | null
+          stl_size_bytes?: number | null
+          time_hours?: number | null
+          total_price: number
+          unit_price: number
+          user_id: string
+          weight_g?: number | null
+        }
+        Update: {
+          cost_direct?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          material_name?: string | null
+          name?: string
+          position?: number
+          preview_png?: string | null
+          profit?: number | null
+          quantity?: number
+          quote_id?: string
+          stl_filename?: string | null
+          stl_path?: string | null
+          stl_size_bytes?: number | null
+          time_hours?: number | null
+          total_price?: number
+          unit_price?: number
+          user_id?: string
+          weight_g?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           client: string | null
+          client_id: string | null
           cost_energy: number
           cost_labor: number
           cost_machine: number
@@ -97,6 +238,7 @@ export type Database = {
           cost_setup: number | null
           cost_support: number | null
           created_at: string
+          delivery_days: number | null
           dim_x: number | null
           dim_y: number | null
           dim_z: number | null
@@ -114,12 +256,16 @@ export type Database = {
           material_name: string
           notes: string | null
           packaging: number
+          payment_terms: string | null
           platform_fee: number
           platform_fee_value: number
           platform_name: string | null
           profit: number
           project: string | null
+          public_notes: string | null
           quantity: number | null
+          quote_number: string | null
+          shipping_price: number | null
           sold_at: string | null
           sold_price: number | null
           sold_profit: number | null
@@ -132,11 +278,14 @@ export type Database = {
           tax_pct: number | null
           tax_value: number | null
           time_hours: number
+          title: string | null
           user_id: string
+          valid_until: string | null
           weight_g: number
         }
         Insert: {
           client?: string | null
+          client_id?: string | null
           cost_energy: number
           cost_labor: number
           cost_machine: number
@@ -145,6 +294,7 @@ export type Database = {
           cost_setup?: number | null
           cost_support?: number | null
           created_at?: string
+          delivery_days?: number | null
           dim_x?: number | null
           dim_y?: number | null
           dim_z?: number | null
@@ -162,12 +312,16 @@ export type Database = {
           material_name: string
           notes?: string | null
           packaging: number
+          payment_terms?: string | null
           platform_fee: number
           platform_fee_value: number
           platform_name?: string | null
           profit: number
           project?: string | null
+          public_notes?: string | null
           quantity?: number | null
+          quote_number?: string | null
+          shipping_price?: number | null
           sold_at?: string | null
           sold_price?: number | null
           sold_profit?: number | null
@@ -180,11 +334,14 @@ export type Database = {
           tax_pct?: number | null
           tax_value?: number | null
           time_hours: number
+          title?: string | null
           user_id: string
+          valid_until?: string | null
           weight_g: number
         }
         Update: {
           client?: string | null
+          client_id?: string | null
           cost_energy?: number
           cost_labor?: number
           cost_machine?: number
@@ -193,6 +350,7 @@ export type Database = {
           cost_setup?: number | null
           cost_support?: number | null
           created_at?: string
+          delivery_days?: number | null
           dim_x?: number | null
           dim_y?: number | null
           dim_z?: number | null
@@ -210,12 +368,16 @@ export type Database = {
           material_name?: string
           notes?: string | null
           packaging?: number
+          payment_terms?: string | null
           platform_fee?: number
           platform_fee_value?: number
           platform_name?: string | null
           profit?: number
           project?: string | null
+          public_notes?: string | null
           quantity?: number | null
+          quote_number?: string | null
+          shipping_price?: number | null
           sold_at?: string | null
           sold_price?: number | null
           sold_profit?: number | null
@@ -228,10 +390,20 @@ export type Database = {
           tax_pct?: number | null
           tax_value?: number | null
           time_hours?: number
+          title?: string | null
           user_id?: string
+          valid_until?: string | null
           weight_g?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_settings: {
         Row: {
@@ -311,6 +483,7 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      next_quote_number: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
