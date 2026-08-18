@@ -752,6 +752,152 @@ function CalculatorPage() {
               </div>
             </div>
 
+            {form.useV2 && stlData && settings && (
+              <div className="space-y-4 pt-4 border-t border-[#22223a]">
+                <div className="flex items-center justify-between">
+                  <Label className="text-white font-semibold">Tabela de Preço por Quantidade</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-[10px] text-gray-400 hover:text-white h-7"
+                    onClick={() => {
+                      const quantities = [1, 5, 10, 25, 50, 100].filter(q => q <= 200);
+                      let tableText = "Tabela de Preços:\n";
+                      quantities.forEach(q => {
+                        const b = calcBatch({
+                          quantidade: q,
+                          n: partsPerPlate,
+                          modo: batchPrintMode,
+                          volumeExtrudadoMm3,
+                          pesoG: parseFloat(form.weightG) || 0,
+                          pesoSuporteG,
+                          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                          precoKg: currentMat?.price_per_kg || 100,
+                          watts: settings.watt,
+                          precoKwh: settings.kwh,
+                          precoHoraMaquina: settings.machine,
+                          setupMinutes: Number(form.setupMinutes) || 0,
+                          precoHoraMaoObra: settings.labor,
+                          posMinutos: Number(form.postProcessingMinutes) || 0,
+                          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                          embalagem: Number(form.packaging) || 0,
+                          dimZ: stlData.dimZ,
+                          layerHeight: settings.layer_height || 0.2,
+                          volumetricRate: settings.volumetric_rate || 8,
+                          travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+                          calibracao: settings.time_calibration || 1.0,
+                          failurePct: Number(form.failurePct) || 0,
+                          killsPlate: (settings as any).batch_kills_plate ?? true,
+                          lossFactor: (settings as any).batch_loss_factor || 0.6,
+                          marginPct: Number(form.marginPct) || 0,
+                          discountPct: Number(form.discountPct) || 0,
+                          taxPct: Number(form.taxPct) || 0,
+                          platformFeePct: Number(form.platformFee) || 0
+                        });
+                        tableText += `${q} un: R$ ${b.unitPrice.toFixed(2)}/un (Total: R$ ${b.finalPrice.toFixed(2)})\n`;
+                      });
+                      setForm(f => ({ ...f, publicNotes: f.publicNotes + "\n" + tableText }));
+                      toast.success('Tabela adicionada às observações!');
+                    }}
+                  >
+                    <Plus size={12} className="mr-1" />
+                    Add ao Orçamento
+                  </Button>
+                </div>
+                
+                <div className="bg-[#07071a] rounded-xl border border-[#22223a] overflow-hidden">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-[#111128] text-gray-400">
+                      <tr>
+                        <th className="py-2 px-3 text-left">Qtd</th>
+                        <th className="py-2 px-3 text-right">Unitário</th>
+                        <th className="py-2 px-3 text-right">Total</th>
+                        <th className="py-2 px-3 text-right">Desc %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#22223a]">
+                      {(() => {
+                        const quantities = [1, 5, 10, 25, 50, 100].filter(q => q <= 200);
+                        const basePrice = calcBatch({
+                          quantidade: 1,
+                          n: 1,
+                          modo: 'sequencial',
+                          volumeExtrudadoMm3,
+                          pesoG: parseFloat(form.weightG) || 0,
+                          pesoSuporteG,
+                          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                          precoKg: currentMat?.price_per_kg || 100,
+                          watts: settings.watt,
+                          precoKwh: settings.kwh,
+                          precoHoraMaquina: settings.machine,
+                          setupMinutes: Number(form.setupMinutes) || 0,
+                          precoHoraMaoObra: settings.labor,
+                          posMinutos: Number(form.postProcessingMinutes) || 0,
+                          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                          embalagem: Number(form.packaging) || 0,
+                          dimZ: stlData.dimZ,
+                          layerHeight: settings.layer_height || 0.2,
+                          volumetricRate: settings.volumetric_rate || 8,
+                          travelSeg: 0,
+                          calibracao: settings.time_calibration || 1.0,
+                          failurePct: Number(form.failurePct) || 0,
+                          killsPlate: (settings as any).batch_kills_plate ?? true,
+                          lossFactor: (settings as any).batch_loss_factor || 0.6,
+                          marginPct: Number(form.marginPct) || 0,
+                          discountPct: Number(form.discountPct) || 0,
+                          taxPct: Number(form.taxPct) || 0,
+                          platformFeePct: Number(form.platformFee) || 0
+                        }).unitPrice;
+
+                        return quantities.map(q => {
+                          const b = calcBatch({
+                            quantidade: q,
+                            n: partsPerPlate,
+                            modo: batchPrintMode,
+                            volumeExtrudadoMm3,
+                            pesoG: parseFloat(form.weightG) || 0,
+                            pesoSuporteG,
+                            plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                            precoKg: currentMat?.price_per_kg || 100,
+                            watts: settings.watt,
+                            precoKwh: settings.kwh,
+                            precoHoraMaquina: settings.machine,
+                            setupMinutes: Number(form.setupMinutes) || 0,
+                            precoHoraMaoObra: settings.labor,
+                            posMinutos: Number(form.postProcessingMinutes) || 0,
+                            precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                            embalagem: Number(form.packaging) || 0,
+                            dimZ: stlData.dimZ,
+                            layerHeight: settings.layer_height || 0.2,
+                            volumetricRate: settings.volumetric_rate || 8,
+                            travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+                            calibracao: settings.time_calibration || 1.0,
+                            failurePct: Number(form.failurePct) || 0,
+                            killsPlate: (settings as any).batch_kills_plate ?? true,
+                            lossFactor: (settings as any).batch_loss_factor || 0.6,
+                            marginPct: Number(form.marginPct) || 0,
+                            discountPct: Number(form.discountPct) || 0,
+                            taxPct: Number(form.taxPct) || 0,
+                            platformFeePct: Number(form.platformFee) || 0
+                          });
+                          const disc = ((1 - b.unitPrice / basePrice) * 100);
+                          return (
+                            <tr key={q} className="hover:bg-[#111128]/50">
+                              <td className="py-2 px-3 text-white font-medium">{q} un</td>
+                              <td className="py-2 px-3 text-right font-mono text-gray-300">R$ {b.unitPrice.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-white">R$ {b.finalPrice.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-green-500">{disc > 0 ? disc.toFixed(0) + '%' : '-'}</td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+
             <div className="grid grid-cols-3 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Falha (%)</Label>
