@@ -428,13 +428,31 @@ function CalculatorPage() {
 
 
   const calculate = () => {
-    if (!form.weightG || (!form.h && !form.m)) {
-      toast.error('Peso e tempo são obrigatórios.');
-      return;
+    const isBatchV3 = form.useV2 && batchMode && parseInt(form.totalPieces) > 1;
+    
+    if (isBatchV3) {
+      if (!form.plateTimeH && !form.plateTimeM) {
+        toast.error('Informe o tempo da placa (você encontra no seu slicer).');
+        return;
+      }
+      if (!form.weightG) {
+        toast.error('Informe o peso.');
+        return;
+      }
+      if (parseInt(form.piecesPerPlate) < 1 || parseInt(form.totalPieces) < 1) {
+        toast.error('Quantidades inválidas.');
+        return;
+      }
+    } else {
+      if (!form.weightG || (!form.h && !form.m)) {
+        toast.error('Peso e tempo são obrigatórios.');
+        return;
+      }
     }
     
     performCalculation();
   };
+
 
   const mutation = useMutation({
     mutationFn: (data: any) => saveFullQuoteFn({ data }),
