@@ -69,6 +69,13 @@ function CalculatorPage() {
   });
 
   const [items, setItems] = useState<any[]>([]);
+  const [currentFileMetadata, setCurrentFileMetadata] = useState<{
+    path: string | null;
+    filename: string | null;
+    size: number | null;
+    hash: string | null;
+  } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [stlData, setStlData] = useState<STLData | null>(null);
   const [stlLoading, setStlLoading] = useState(false);
@@ -125,10 +132,61 @@ function CalculatorPage() {
     const ext = file.name.toLowerCase().split('.').pop();
     setStlLoading(true);
     setStlFileName(file.name);
+    setUploadProgress(0);
+    setCurrentFileMetadata(null);
     
     try {
       const buffer = await file.arrayBuffer();
       
+      // Hash generation
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      let finalPath = null;
+
+      // Check storage config
+      if (settings?.store_files) {
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error("Arquivo muito grande para o armazenamento — o orçamento será salvo sem o arquivo");
+        } else {
+          const { supabase } = await import('@/integrations/supabase/client');
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            // Check if exists for this user (we could search across but security limits search)
+            // Simplified cross-check using the hash as part of the name for fast listing
+            const { data: existing } = await supabase.storage.from("quote-files").list(`${user.id}/pre/`, { search: hashHex });
+            
+            if (existing && existing.length > 0) {
+              finalPath = `${user.id}/pre/${existing[0].name}`;
+              toast.success('Arquivo reutilizado da nuvem!');
+            } else {
+              // New upload
+              const fileName = `${hashHex}.${ext}`;
+              const path = `${user.id}/pre/${fileName}`;
+              setUploadProgress(10);
+              const { error } = await supabase.storage.from("quote-files").upload(path, file);
+              setUploadProgress(100);
+              if (error) {
+                console.error("Upload error:", error);
+                toast.error("Falha no upload, salvando sem arquivo");
+              } else {
+                finalPath = path;
+                toast.success("Arquivo salvo na nuvem!");
+              }
+            }
+          }
+        }
+      }
+
+      setCurrentFileMetadata({
+        path: finalPath,
+        filename: file.name,
+        size: file.size,
+        hash: hashHex
+      });
+
       if (ext === 'stl') {
         const tris = parseSTLBuffer(buffer);
         const stats = analyzeTriangles(tris);
@@ -144,16 +202,13 @@ function CalculatorPage() {
           setForm(f => ({ ...f, h: h.toString(), m: m.toString() }));
         }
         toast.success('G-code processado!');
-      } else if (ext === '3mf') {
-        // Simple 3MF parsing - just listing files for now as it needs complex XML parsing
-        // But we can at least detect it and warn
-        toast.info('Arquivo 3MF detectado. Estimativa manual sugerida.');
       }
     } catch (error) {
       console.error(error);
       toast.error('Erro ao processar o arquivo.');
     } finally {
       setStlLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -215,7 +270,11 @@ function CalculatorPage() {
       unit_price: result.finalPriceUnit || result.finalPrice,
       total_price: result.finalPrice,
       cost_direct: result.subtotal / Number(form.quantity),
-      profit: result.profitUnit || result.profit
+      profit: result.profitUnit || result.profit,
+      stl_path: currentFileMetadata?.path,
+      stl_filename: currentFileMetadata?.filename,
+      stl_size_bytes: currentFileMetadata?.size,
+      stl_hash: currentFileMetadata?.hash
     };
     setItems([...items, newItem]);
     toast.success('Peça adicionada ao orçamento!');
@@ -306,7 +365,7 @@ function CalculatorPage() {
               {stlLoading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="animate-spin text-[#f97316]" size={32} />
-                  <p>Analisando arquivo...</p>
+                  <p>Processando... {uploadProgress > 0 ? `${uploadProgress}%` : ''}</p>
                 </div>
               ) : stlData ? (
                 <div className="flex flex-col items-center gap-2">
@@ -492,7 +551,7 @@ function CalculatorPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', clientId: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2', validUntil: format(addDays(new Date(), 15), 'yyyy-MM-dd'), deliveryDays: '7', paymentTerms: '', shippingPrice: '0', publicNotes: '', title: '' }); setStlData(null); setResult(null); setItems([]); }}>
+               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', clientId: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2', validUntil: format(addDays(new Date(), 15), 'yyyy-MM-dd'), deliveryDays: '7', paymentTerms: '', shippingPrice: '0', publicNotes: '', title: '' }); setStlData(null); setStlFileName(''); setCurrentFileMetadata(null); setResult(null); setItems([]); }}>
                  Limpar
                </Button>
                  <Button className="flex-1 bg-[#111128] border border-[#22223a] hover:bg-[#22223a] gap-2 text-white" onClick={addItem} disabled={!result}>

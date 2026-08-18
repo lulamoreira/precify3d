@@ -2,8 +2,12 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { getQuoteDetails, getSignedUrl } from '@/lib/quotes.functions';
+import { generatePublicLink, revokePublicLink } from '@/lib/public-quotes.functions';
+import { Card, CardContent } from '@/components/ui/card';
+import { Link as RouterLink } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Printer, ArrowLeft, Mail, Phone, MapPin } from 'lucide-react';
+import { Loader2, Download, Printer, ArrowLeft, Mail, Phone, MapPin, Copy, Link as LinkIcon, ShieldOff, Eye, FileBox, Clock, CheckCircle2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -21,10 +25,15 @@ function QuoteViewPage() {
   const { id } = Route.useParams();
   const getQuoteDetailsFn = useServerFn(getQuoteDetails);
   const getSignedUrlFn = useServerFn(getSignedUrl);
+  const generateLinkFn = useServerFn(generatePublicLink);
+  const revokeLinkFn = useServerFn(revokePublicLink);
+  
   const documentRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [validityDays, setValidityDays] = useState(15);
 
-  const { data: details, isLoading } = useQuery({
+  const { data: details, isLoading, refetch } = useQuery({
     queryKey: ['quote-details', id],
     queryFn: () => getQuoteDetailsFn({ data: id }),
   });
@@ -69,6 +78,43 @@ function QuoteViewPage() {
     }
   };
 
+  const handleGenerateLink = async () => {
+    setGeneratingLink(true);
+    try {
+      await generateLinkFn({ data: { quoteId: id, days: validityDays } });
+      toast.success('Link público gerado!');
+      refetch();
+    } catch (error) {
+      toast.error('Erro ao gerar link');
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleRevokeLink = async () => {
+    try {
+      await revokeLinkFn({ data: id });
+      toast.success('Link revogado');
+      refetch();
+    } catch (error) {
+      toast.error('Erro ao revogar link');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Link copiado para a área de transferência!');
+  };
+
+  const downloadSTL = async (item: any) => {
+    try {
+      const url = await getSignedUrlFn({ data: { bucket: 'quote-files', path: item.stl_path } });
+      window.open(url, '_blank');
+    } catch (err) {
+      toast.error('Erro ao baixar arquivo');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -97,6 +143,74 @@ function QuoteViewPage() {
             Exportar PDF
           </Button>
         </div>
+      </div>
+
+      <div className="bg-[#111128] border border-[#22223a] rounded-xl p-6 no-print space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <LinkIcon size={18} className="text-[#f97316]" />
+              Link Público do Orçamento
+            </h3>
+            <p className="text-xs text-gray-500">Compartilhe este link com seu cliente para visualização online profissional.</p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {!quote.public_token ? (
+              <div className="flex items-center gap-2">
+                <Select value={validityDays.toString()} onValueChange={(v) => setValidityDays(parseInt(v))}>
+                  <SelectTrigger className="w-24 bg-[#07071a] border-[#22223a] text-white h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                    <SelectItem value="7">7 dias</SelectItem>
+                    <SelectItem value="15">15 dias</SelectItem>
+                    <SelectItem value="30">30 dias</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button className="bg-[#f97316] hover:bg-[#d96314] text-white h-9" onClick={handleGenerateLink} disabled={generatingLink}>
+                  {generatingLink ? <Loader2 className="animate-spin" size={16} /> : "Gerar Link"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+                <div className="flex items-center gap-2 bg-[#07071a] border border-[#22223a] rounded-lg px-3 py-1.5 h-9">
+                  <span className="text-[10px] text-gray-500 truncate max-w-[200px]">
+                    {`${window.location.origin}/o/${quote.public_token}`}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-white" onClick={() => copyToClipboard(`${window.location.origin}/o/${quote.public_token}`)}>
+                    <Copy size={14} />
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="border-red-500/30 text-red-500 hover:bg-red-500/10 h-9" onClick={handleRevokeLink}>
+                    <ShieldOff size={16} className="mr-2" /> Revogar
+                  </Button>
+                  <RouterLink to="/o/$token" params={{ token: quote.public_token }} target="_blank">
+                    <Button variant="outline" className="border-[#22223a] text-white hover:bg-[#22223a] h-9">
+                      <Eye size={16} className="mr-2" /> Visualizar
+                    </Button>
+                  </RouterLink>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {quote.public_token && (
+          <div className="flex flex-wrap gap-4 pt-2 border-t border-[#22223a]/50 text-[10px] text-gray-400">
+            <div className="flex items-center gap-1.5">
+              <Clock size={12} />
+              Expira em: {quote.public_expires_at ? format(new Date(quote.public_expires_at), 'dd/MM/yyyy HH:mm') : '—'}
+            </div>
+            {quote.viewed_at && (
+              <div className="flex items-center gap-1.5 text-green-500 font-bold">
+                <CheckCircle2 size={12} />
+                Visualizado pelo cliente em: {quote.viewed_at ? format(new Date(quote.viewed_at), 'dd/MM/yyyy HH:mm') : '—'}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-2xl overflow-hidden text-slate-900 mx-auto" style={{ width: '210mm', minHeight: '297mm' }}>

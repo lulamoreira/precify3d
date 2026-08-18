@@ -4,7 +4,7 @@ import { getQuotes } from '@/lib/data.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { format, startOfWeek, endOfWeek, isWithinInterval, subWeeks } from 'date-fns';
-import { DollarSign, TrendingUp, ShoppingBag, ClipboardList, Plus, Target, Activity } from 'lucide-react';
+import { DollarSign, TrendingUp, ShoppingBag, ClipboardList, Plus, Target, Activity, Clock } from 'lucide-react';
 import { isVenda, isAberto, valorVenda, lucroVenda, getStatusColor, getStatusLabel, type QuoteStatus } from '@/lib/quote-status';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,7 +30,12 @@ function DashboardPage() {
     averageTicket: 0,
     abertoValue: quotes?.filter(isAberto).reduce((acc: number, q: any) => acc + Number(q.final_price), 0) || 0,
     simulacoesCount: quotes?.filter((q: any) => q.kind === 'simulacao').length || 0,
-    conversaoRate: '—' as string | number
+    conversaoRate: '—' as string | number,
+    aguardando7Dias: quotes?.filter((q: any) => q.status === 'enviado' && (new Date().getTime() - new Date(q.created_at).getTime()) > 7 * 24 * 60 * 60 * 1000).length || 0,
+    aprovadosCount: quotes?.filter((q: any) => q.status === 'aprovado').length || 0,
+    recusadosCount: quotes?.filter((q: any) => q.status === 'recusado').length || 0,
+    rascunhosCount: quotes?.filter((q: any) => q.status === 'rascunho').length || 0,
+    enviadosCount: quotes?.filter((q: any) => q.status === 'enviado').length || 0,
   };
 
   if (stats.vendasCount > 0) {
@@ -111,6 +116,30 @@ function DashboardPage() {
           icon={Activity} 
           color="text-gray-400"
         />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatusMiniCard label="Rascunhos" value={stats.rascunhosCount} color="bg-gray-500/10 text-gray-400" />
+        <StatusMiniCard label="Enviados" value={stats.enviadosCount} color="bg-blue-500/10 text-blue-400" />
+        <StatusMiniCard label="Aprovados" value={stats.aprovadosCount} color="bg-green-500/10 text-green-400" />
+        <StatusMiniCard label="Recusados" value={stats.recusadosCount} color="bg-red-500/10 text-red-400" />
+      </div>
+
+      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-yellow-500/20 rounded-lg text-yellow-500">
+            <Clock size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Atenção Comercial</p>
+            <p className="text-xs text-gray-400">{stats.aguardando7Dias} orçamentos enviados há mais de 7 dias sem resposta.</p>
+          </div>
+        </div>
+        <Link to="/historico">
+          <Button variant="ghost" size="sm" className="text-yellow-500 hover:bg-yellow-500/10 text-xs">
+            Ver Pendentes
+          </Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -196,6 +225,15 @@ function DashboardPage() {
           </Table>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function StatusMiniCard({ label, value, color }: { label: string, value: number, color: string }) {
+  return (
+    <div className={cn("p-3 rounded-xl border border-white/5 flex justify-between items-center", color)}>
+      <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+      <span className="text-lg font-black">{value}</span>
     </div>
   );
 }

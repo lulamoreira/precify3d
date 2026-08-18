@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { getSignedUrl } from '@/lib/quotes.functions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getQuotes, deleteQuote, updateQuoteStatus } from '@/lib/data.functions';
+import { deleteQuoteWithFiles } from '@/lib/public-quotes.functions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, ClipboardList, Loader2, MoreVertical, CheckCircle2, XCircle, Clock, Undo2, Filter, AlertTriangle } from 'lucide-react';
+import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, ClipboardList, Loader2, MoreVertical, CheckCircle2, XCircle, Clock, Undo2, Filter, AlertTriangle, FileBox } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -40,7 +42,7 @@ function HistoryPage() {
     queryFn: () => getQuotes(),
   });
 
-  const deleteQuoteFn = useServerFn(deleteQuote);
+  const deleteQuoteFn = useServerFn(deleteQuoteWithFiles);
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteQuoteFn({ data: id }),
     onSuccess: () => {
@@ -147,6 +149,17 @@ function HistoryPage() {
 
   const unclassifiedCount = quotes?.filter(q => q.status === 'nao_classificado').length || 0;
   const [showUnclassifiedBanner, setShowUnclassifiedBanner] = useState(true);
+
+  const getSignedUrlFn = useServerFn(getSignedUrl);
+
+  const downloadSTL = async (item: any) => {
+    try {
+      const url = await getSignedUrlFn({ data: { bucket: 'quote-files', path: item.stl_path } });
+      window.open(url, '_blank');
+    } catch (err) {
+      toast.error('Erro ao baixar arquivo');
+    }
+  };
 
   const stats = {
     vendasRealizadas: quotes?.filter(isVenda).reduce((acc: number, q: any) => acc + valorVenda(q), 0) || 0,
@@ -264,6 +277,7 @@ function HistoryPage() {
                 <TableHead className="text-gray-400">Custo</TableHead>
                 <TableHead className="text-gray-400">Preço</TableHead>
                 <TableHead className="text-gray-400">Lucro</TableHead>
+                <TableHead className="text-gray-400">STL</TableHead>
                 <TableHead className="text-gray-400 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -351,6 +365,13 @@ function HistoryPage() {
                   </TableCell>
                   <TableCell className={cn("text-sm font-medium", lucroVenda(quote) >= 0 ? "text-green-500" : "text-red-500")}>
                     R$ {lucroVenda(quote).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    {quote.quote_items?.some((i: any) => i.stl_path) && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-[#f97316] hover:bg-[#f97316]/10" onClick={() => downloadSTL(quote.quote_items.find((i: any) => i.stl_path))}>
+                        <FileBox size={16} />
+                      </Button>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
