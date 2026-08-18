@@ -631,9 +631,10 @@ function CalculatorPage() {
                 <Input placeholder="Ex: Suporte" value={form.project} onChange={e => setForm({...form, project: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
               <div className="space-y-2">
-                <Label>Quantidade</Label>
-                <Input type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Label>Total a fornecer</Label>
+                <Input type="number" min="1" value={form.totalPieces} onChange={e => setForm({...form, totalPieces: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
+
             </div>
 
             {form.useV2 && parseInt(form.quantity) > 1 && (
