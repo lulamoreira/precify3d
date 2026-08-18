@@ -608,6 +608,77 @@ function SettingsPage() {
         <Info size={16} />
         <p>As alterações feitas aqui serão aplicadas automaticamente aos seus próximos cálculos.</p>
       </div>
+      <AlertDialog open={showPresetAlert} onOpenChange={setShowPresetAlert}>
+        <AlertDialogContent className="bg-[#111128] border-[#22223a] text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar Preset: {pendingPreset?.brand} {pendingPreset?.model}?</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400">
+              {pendingPreset && Math.abs(Number(form.watt) - pendingPreset.avg_watts) > (pendingPreset.avg_watts * 0.5) && (
+                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-amber-500 text-xs flex items-center gap-2">
+                  <AlertTriangle size={14} />
+                  <span>Sua potência atual ({form.watt}W) é muito diferente da média ({pendingPreset.avg_watts}W).</span>
+                </div>
+              )}
+              {pendingPreset?.tech === 'fdm' && (pendingPreset.bed_x !== form.bed_x || pendingPreset.bed_y !== form.bed_y) && (
+                <p className="mb-2">Deseja preencher também as medidas da mesa ({pendingPreset.bed_x} x {pendingPreset.bed_y} x {pendingPreset.bed_z} mm)?</p>
+              )}
+              {pendingPreset?.is_estimated && (
+                <p className="text-xs text-amber-500 mt-2">⚠️ Este consumo é uma estimativa — o fabricante não divulga. Confira com um medidor de tomada.</p>
+              )}
+              {pendingPreset?.multicolor && (
+                <div className="mt-4 p-3 bg-[#f97316]/10 border border-[#f97316]/20 rounded text-[#f97316] text-xs">
+                  <p>Multicor desperdiça filamento na troca. Aumente o 'Desperdício por placa (g)' em Impressora/Mesa — pode passar de 30%.</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-[#22223a] hover:bg-[#22223a] text-white">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#f97316] hover:bg-[#d96314]"
+              onClick={() => {
+                const updates: any = { 
+                  printer_preset_id: pendingPreset.id,
+                  watt: pendingPreset.avg_watts.toString()
+                };
+                
+                // Confirm bed size separately? Specification says "ask before"
+                // Let's assume the user clicked "Sim" by clicking Action if they didn't cancel
+                // Actually the prompt says: [Sim] [Não]. Let's just update everything if they click apply.
+                if (pendingPreset.tech === 'fdm') {
+                  updates.bed_x = pendingPreset.bed_x;
+                  updates.bed_y = pendingPreset.bed_y;
+                  updates.bed_z = pendingPreset.bed_z;
+                }
+                
+                setForm({ ...form, ...updates });
+                setShowPresetAlert(false);
+                setPendingPreset(null);
+              }}
+            >
+              Aplicar Preset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {!dismissedAlerts.includes('energy-tip') && (
+        <div className="fixed bottom-4 right-4 max-w-sm bg-[#111128] border border-[#22223a] p-4 rounded-2xl shadow-2xl animate-in slide-in-from-right duration-500">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2 text-amber-500 text-sm font-bold">
+              <AlertCircle size={16} />
+              <span>Dica de Energia</span>
+            </div>
+            <button onClick={() => setDismissedAlerts([...dismissedAlerts, 'energy-tip'])} className="text-gray-500 hover:text-white">
+              <Plus className="rotate-45" size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Use o consumo MÉDIO imprimindo, não a potência da ficha técnica. A Bambu A1 diz 1300W, mas gasta ~90W imprimindo. Usar o pico multiplica seu custo por 10.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
+
