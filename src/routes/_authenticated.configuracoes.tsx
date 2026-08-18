@@ -277,6 +277,137 @@ function SettingsPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Maximize size={18} className="text-[#f97316]" />
+                    Minha Impressora / Mesa
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex flex-wrap gap-2">
+                    {printerPresets.map(preset => (
+                      <Button
+                        key={preset.name}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="bg-[#07071a] border-[#22223a] hover:bg-[#22223a] text-xs"
+                        onClick={() => applyPreset(preset)}
+                      >
+                        {preset.name}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Mesa X (mm)</Label>
+                      <Input type="number" value={form.bed_x} onChange={e => setForm({...form, bed_x: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mesa Y (mm)</Label>
+                      <Input type="number" value={form.bed_y} onChange={e => setForm({...form, bed_y: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mesa Z (mm)</Label>
+                      <Input type="number" value={form.bed_z} onChange={e => setForm({...form, bed_z: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label>Margem da Mesa (mm)</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info size={14} className="text-gray-400 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>Espaço de segurança nas bordas da mesa</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <Input type="number" value={form.plate_margin} onChange={e => setForm({...form, plate_margin: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label>Espaçamento entre Peças (mm)</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info size={14} className="text-gray-400 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>Gap mínimo entre cada objeto no lote</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <Input type="number" value={form.part_gap} onChange={e => setForm({...form, part_gap: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label>Desperdício por Mesa (g)</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info size={14} className="text-gray-400 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>Purga, skirt e material perdido ao iniciar uma mesa</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <Input type="number" value={form.plate_waste_g} onChange={e => setForm({...form, plate_waste_g: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-[#07071a] border border-[#22223a] rounded-xl">
+                        <div className="space-y-0.5">
+                          <Label className="text-sm">Falha derruba a mesa?</Label>
+                          <p className="text-[10px] text-gray-500">Se uma peça soltar, você costuma perder o lote todo?</p>
+                        </div>
+                        <Switch checked={form.batch_kills_plate} onCheckedChange={checked => setForm({...form, batch_kills_plate: checked})} />
+                      </div>
+
+                      <div className="space-y-4 p-3 bg-[#07071a] border border-[#22223a] rounded-xl">
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-sm">Fator de Perda em Falha</Label>
+                            <span className="text-xs text-[#f97316] font-mono">{(form.batch_loss_factor * 100).toFixed(0)}%</span>
+                          </div>
+                          <p className="text-[10px] text-gray-500">Quanto do tempo/material da mesa se perde em caso de falha</p>
+                        </div>
+                        <Slider 
+                          value={[form.batch_loss_factor]} 
+                          min={0} 
+                          max={1} 
+                          step={0.1} 
+                          onValueChange={([val]) => setForm({...form, batch_loss_factor: val})} 
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label>Tempo de Viagem entre Peças (s)</Label>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info size={14} className="text-gray-400 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>Segundos extras por camada para cada peça adicional (Modo Simultâneo)</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <Input type="number" value={form.batch_travel_seconds} onChange={e => setForm({...form, batch_travel_seconds: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
