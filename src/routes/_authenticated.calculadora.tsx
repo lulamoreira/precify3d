@@ -598,8 +598,8 @@ function CalculatorPage() {
                 </p>
                 <h2 className="text-5xl font-black text-white">R$ {result.finalPrice.toFixed(2)}</h2>
                 <div className="flex justify-center gap-4 pt-2">
-                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {result.realMarginPct.toFixed(1)}%</span>
-                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Lucro: R$ {result.profit.toFixed(2)}</span>
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {(result?.realMarginPct || 0).toFixed(1)}%</span>
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Lucro: R$ {(result?.profit || 0).toFixed(2)}</span>
                 </div>
                 {result.isLoss && (
                   <p className="text-[10px] text-white/90 font-bold mt-2">Ponto de Equilíbrio: R$ {result.breakEvenPrice.toFixed(2)}</p>
