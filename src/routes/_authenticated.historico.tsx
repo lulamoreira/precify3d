@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, ClipboardList, Loader2, MoreVertical, CheckCircle2, XCircle, Clock, Undo2, Filter } from 'lucide-react';
+import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, ClipboardList, Loader2, MoreVertical, CheckCircle2, XCircle, Clock, Undo2, Filter, AlertTriangle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
