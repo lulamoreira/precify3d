@@ -751,12 +751,31 @@ function CalculatorPage() {
 
             <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
-                <Label>Tempo de Impressão</Label>
+                <Label>{batchMode && parseInt(form.totalPieces) > 1 ? "Tempo da PLACA CHEIA" : "Tempo de Impressão"}</Label>
                 <div className="flex gap-2">
-                  <Input type="number" placeholder="h" value={form.h} onChange={e => setForm({...form, h: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                  <Input type="number" placeholder="min" value={form.m} onChange={e => setForm({...form, m: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  <Input type="number" placeholder="h" value={batchMode && parseInt(form.totalPieces) > 1 ? form.plateTimeH : form.h} onChange={e => setForm(f => ({ ...f, [batchMode && parseInt(form.totalPieces) > 1 ? 'plateTimeH' : 'h']: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
+                  <Input type="number" placeholder="min" value={batchMode && parseInt(form.totalPieces) > 1 ? form.plateTimeM : form.m} onChange={e => setForm(f => ({ ...f, [batchMode && parseInt(form.totalPieces) > 1 ? 'plateTimeM' : 'm']: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
                 </div>
+                {form.useV2 && !batchMode && stlData && !form.h && !form.m && (
+                   <button 
+                     className="text-[10px] text-gray-500 hover:text-[#f97316] text-left"
+                     onClick={() => {
+                        const time = estimateTimeHours({
+                          volumeExtrudadoMm3, dimZ: stlData.dimZ,
+                          layerHeight: settings?.layer_height || 0.2,
+                          volumetricRate: settings?.volumetric_rate || 8,
+                          calibration: settings?.time_calibration || 1.0
+                        });
+                        const h = Math.floor(time);
+                        const m = Math.round((time - h) * 60);
+                        setForm(f => ({ ...f, h: h.toString(), m: m.toString() }));
+                     }}
+                   >
+                     Estimativa: {Math.floor(estimateTimeHours({ volumeExtrudadoMm3, dimZ: stlData.dimZ, layerHeight: settings?.layer_height || 0.2, volumetricRate: settings?.volumetric_rate || 8, calibration: settings?.time_calibration || 1.0 }))}h {Math.round((estimateTimeHours({ volumeExtrudadoMm3, dimZ: stlData.dimZ, layerHeight: settings?.layer_height || 0.2, volumetricRate: settings?.volumetric_rate || 8, calibration: settings?.time_calibration || 1.0 }) % 1) * 60)}min — clique para usar
+                   </button>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label>Embalagem (R$)</Label>
                 <Input type="number" value={form.packaging} onChange={e => setForm({...form, packaging: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
