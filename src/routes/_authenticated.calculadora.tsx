@@ -1172,71 +1172,72 @@ function CalculatorPage() {
               </div>
 
               {/* Gráfico da Curva de Custo */}
-              <div className="h-48 w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={(() => {
-                    if (!stlData || !settings) return [];
-                    const data = [];
-                    const capMax = Math.min(100, (plateCapacity({
-                      dimX: stlData.dimX,
-                      dimY: stlData.dimY,
-                      dimZ: stlData.dimZ,
-                      bedX: Number((settings as any).bed_x) || 256,
-                      bedY: Number((settings as any).bed_y) || 256,
-                      bedZ: Number((settings as any).bed_z) || 256,
-                      margin: Number((settings as any).plate_margin) || 5,
-                      gap: Number((settings as any).part_gap) || 8
-                    }).capacidade || 1));
-
-                    for (let n = 1; n <= capMax; n++) {
-                      const b = calcBatch({
-                        quantidade: parseInt(form.quantity),
-                        n: n,
-                        modo: batchPrintMode,
-                        volumeExtrudadoMm3,
-                        pesoG: parseFloat(form.weightG) || 0,
-                        pesoSuporteG,
-                        plateWasteG: Number((settings as any).plate_waste_g) || 5,
-                        precoKg: currentMat?.price_per_kg || 100,
-                        watts: settings.watt,
-                        precoKwh: settings.kwh,
-                        precoHoraMaquina: settings.machine,
-                        setupMinutes: Number(form.setupMinutes) || 0,
-                        precoHoraMaoObra: settings.labor,
-                        posMinutos: Number(form.postProcessingMinutes) || 0,
-                        precoHoraPos: Number(form.postProcessingPriceHour) || 0,
-                        embalagem: Number(form.packaging) || 0,
+              {batchResult.exato ? (
+                <div className="h-48 w-full mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={(() => {
+                      if (!stlData || !settings) return [];
+                      const data = [];
+                      const capMax = Math.min(100, (plateCapacity({
+                        dimX: stlData.dimX,
+                        dimY: stlData.dimY,
                         dimZ: stlData.dimZ,
-                        layerHeight: settings.layer_height || 0.2,
-                        volumetricRate: settings.volumetric_rate || 8,
-                        travelSeg: Number((settings as any).batch_travel_seconds) || 2,
-                        calibracao: settings.time_calibration || 1.0,
-                        failurePct: Number(form.failurePct) || 0,
-                        killsPlate: (settings as any).batch_kills_plate ?? true,
-                        lossFactor: (settings as any).batch_loss_factor || 0.6,
-                        marginPct: Number(form.marginPct) || 0,
-                        discountPct: Number(form.discountPct) || 0,
-                        taxPct: Number(form.taxPct) || 0,
-                        platformFeePct: Number(form.platformFee) || 0
-                      });
-                      data.push({ n, unitPrice: b.unitPrice });
-                    }
-                    return data;
-                  })()}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#22223a" />
-                    <XAxis dataKey="n" stroke="#666" fontSize={10} />
-                    <YAxis hide domain={['auto', 'auto']} />
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#111128', border: '1px solid #22223a', borderRadius: '8px' }}
-                      itemStyle={{ color: '#f97316' }}
-                      labelStyle={{ color: '#fff' }}
-                    />
-                    <ReferenceLine x={partsPerPlate} stroke="#f97316" strokeDasharray="3 3" />
-                    <Line type="monotone" dataKey="unitPrice" stroke="#f97316" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="text-[10px] text-center text-gray-500 mt-2">Custo Unitário x Peças por Mesa</p>
-              </div>
+                        bedX: Number((settings as any).bed_x) || 256,
+                        bedY: Number((settings as any).bed_y) || 256,
+                        bedZ: Number((settings as any).bed_z) || 256,
+                        margin: Number((settings as any).plate_margin) || 5,
+                        gap: Number((settings as any).part_gap) || 8
+                      }).capacidade || 1));
+
+                      for (let n = 1; n <= capMax; n++) {
+                        const b = calcBatch({
+                          quantidade: parseInt(form.totalPieces),
+                          n: n,
+                          modo: batchPrintMode,
+                          volumeExtrudadoMm3,
+                          pesoG: parseFloat(form.weightG) || 0,
+                          pesoSuporteG,
+                          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                          precoKg: currentMat?.price_per_kg || 100,
+                          watts: settings.watt,
+                          precoKwh: settings.kwh,
+                          precoHoraMaquina: settings.machine,
+                          setupMinutes: Number(form.setupMinutes) || 0,
+                          precoHoraMaoObra: settings.labor,
+                          posMinutos: Number(form.postProcessingMinutes) || 0,
+                          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                          embalagem: Number(form.packaging) || 0,
+                          
+                          // V3
+                          plateTimeHoursInput: Number(form.plateTimeH) + (Number(form.plateTimeM) / 60),
+                          singleTimeHoursInput: n === 1 ? (Number(form.singleTimeH) + (Number(form.singleTimeM) / 60)) : undefined,
+                          fixedTimeShare: (settings as any).fixed_time_share || 0.15,
+                          weightInputMode: form.weightInputMode
+                        });
+                        data.push({ n, unitPrice: b.unitPrice });
+                      }
+                      return data;
+                    })()}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#22223a" />
+                      <XAxis dataKey="n" stroke="#666" fontSize={10} />
+                      <YAxis hide domain={['auto', 'auto']} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#111128', border: '1px solid #22223a', borderRadius: '8px' }}
+                        itemStyle={{ color: '#f97316' }}
+                        labelStyle={{ color: '#fff' }}
+                      />
+                      <ReferenceLine x={batchResult.piecesPerPlate} stroke="#f97316" strokeDasharray="3 3" />
+                      <Line type="monotone" dataKey="unitPrice" stroke="#f97316" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <p className="text-[10px] text-center text-gray-500 mt-2">Custo Unitário x Peças por Mesa</p>
+                </div>
+              ) : (
+                <div className="bg-[#07071a] p-4 rounded-xl border border-dashed border-[#22223a] text-center mt-4">
+                  <p className="text-[10px] text-gray-500">Informe o tempo de 1 peça sozinha para ver o ponto ideal</p>
+                </div>
+              )}
+
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
