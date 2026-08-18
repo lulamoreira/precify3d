@@ -799,25 +799,28 @@ function CalculatorPage() {
                   </div>
                 )}
 
-              <div className="grid grid-cols-2 gap-4 text-white animate-fadeIn">
-                <div className="space-y-2">
-                  <Label>Imposto (%)</Label>
-                  <Input type="number" value={form.taxPct} onChange={e => setForm({...form, taxPct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Setup (min)</Label>
-                  <Input type="number" value={form.setupMinutes} onChange={e => setForm({...form, setupMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Custo Pós-Processo (R$/h)</Label>
-                  <Input type="number" value={form.postProcessingPriceHour} onChange={e => setForm({...form, postProcessingPriceHour: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tempo Pós (min)</Label>
-                  <Input type="number" value={form.postProcessingMinutes} onChange={e => setForm({...form, postProcessingMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Imposto (%)</Label>
+                      <Input type="number" value={form.taxPct} onChange={e => setForm({...form, taxPct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Setup (min)</Label>
+                      <Input type="number" value={form.setupMinutes} onChange={e => setForm({...form, setupMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Custo Pós-Processo (R$/h)</Label>
+                      <Input type="number" value={form.postProcessingPriceHour} onChange={e => setForm({...form, postProcessingPriceHour: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tempo Pós (min)</Label>
+                      <Input type="number" value={form.postProcessingMinutes} onChange={e => setForm({...form, postProcessingMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
+
 
             <Separator className="bg-[#22223a]" />
 
