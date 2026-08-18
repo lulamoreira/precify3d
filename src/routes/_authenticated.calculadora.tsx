@@ -74,8 +74,17 @@ function CalculatorPage() {
     paymentTerms: '50% entrada, 50% entrega',
     shippingPrice: '0',
     publicNotes: '',
-    title: ''
+    title: '',
+    // V3 Fields
+    plateTimeH: '',
+    plateTimeM: '',
+    singleTimeH: '',
+    singleTimeM: '',
+    weightInputMode: 'peca' as 'peca' | 'placa',
+    totalPieces: '1',
+    piecesPerPlate: '1'
   });
+
 
   const [items, setItems] = useState<any[]>([]);
   const [currentFileMetadata, setCurrentFileMetadata] = useState<{
