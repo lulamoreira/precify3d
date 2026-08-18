@@ -74,8 +74,17 @@ function CalculatorPage() {
     paymentTerms: '50% entrada, 50% entrega',
     shippingPrice: '0',
     publicNotes: '',
-    title: ''
+    title: '',
+    // V3 Fields
+    plateTimeH: '',
+    plateTimeM: '',
+    singleTimeH: '',
+    singleTimeM: '',
+    weightInputMode: 'peca' as 'peca' | 'placa',
+    totalPieces: '1',
+    piecesPerPlate: '1'
   });
+
 
   const [items, setItems] = useState<any[]>([]);
   const [currentFileMetadata, setCurrentFileMetadata] = useState<{
@@ -147,6 +156,7 @@ function CalculatorPage() {
         const m = Math.round((time - h) * 60);
         setForm(f => ({ ...f, weightG: weightObj.pesoG.toString(), h: h.toString(), m: m.toString() }));
 
+
         // Lógica de Capacidade da Mesa
         const cap = plateCapacity({
           dimX: stlData.dimX,
@@ -160,8 +170,9 @@ function CalculatorPage() {
         });
         
         if (cap.fits) {
-          setPartsPerPlate(prev => prev > cap.capacidade ? cap.capacidade : (prev || cap.capacidade));
+          setForm(f => ({ ...f, piecesPerPlate: cap.capacidade.toString() }));
         }
+
       } else {
         const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
         setForm(f => ({ ...f, weightG: weight.toString() }));
@@ -176,7 +187,6 @@ function CalculatorPage() {
     setQuotaError(null);
     
     try {
-      // 1. Check/Consume Quota
       const fingerprint = await getPricingFingerprint({
         fileHash: currentFileMetadata?.hash || undefined,
         projectName: form.project || undefined,
@@ -194,16 +204,26 @@ function CalculatorPage() {
         return;
       }
       
-      // 2. Perform Math
-      if (form.useV2 && stlData) {
-        const quantity = Math.max(1, parseInt(form.quantity) || 1);
-        const n = Math.max(1, partsPerPlate);
-        const isBatchActive = batchMode && quantity > 1;
+      if (form.useV2) {
+        const totalQty = Math.max(1, parseInt(form.totalPieces) || 1);
+        const piecesPlate = Math.max(1, parseInt(form.piecesPerPlate) || 1);
+        const isBatchActive = batchMode && totalQty > 1;
 
         if (isBatchActive) {
+          const plateTimeInput = (parseInt(form.plateTimeH) || 0) + (parseInt(form.plateTimeM) || 0) / 60;
+          const singleTimeInput = (form.singleTimeH || form.singleTimeM) 
+            ? (parseInt(form.singleTimeH) || 0) + (parseInt(form.singleTimeM) || 0) / 60 
+            : undefined;
+
+          if (plateTimeInput <= 0) {
+            toast.error("Informe o tempo da placa (você encontra no seu slicer)");
+            setCalculating(false);
+            return;
+          }
+
           const batch = calcBatch({
-            quantidade: quantity,
-            n: n,
+            quantidade: totalQty,
+            n: piecesPlate,
             modo: batchPrintMode,
             volumeExtrudadoMm3,
             pesoG: parseFloat(form.weightG) || 0,
@@ -218,7 +238,7 @@ function CalculatorPage() {
             posMinutos: Number(form.postProcessingMinutes) || 0,
             precoHoraPos: Number(form.postProcessingPriceHour) || 0,
             embalagem: Number(form.packaging) || 0,
-            dimZ: stlData.dimZ,
+            dimZ: stlData?.dimZ || 0,
             layerHeight: settings.layer_height || 0.2,
             volumetricRate: settings.volumetric_rate || 8,
             travelSeg: Number((settings as any).batch_travel_seconds) || 2,
@@ -229,27 +249,35 @@ function CalculatorPage() {
             marginPct: Number(form.marginPct) || 0,
             discountPct: Number(form.discountPct) || 0,
             taxPct: Number(form.taxPct) || 0,
-            platformFeePct: Number(form.platformFee) || 0
+            platformFeePct: Number(form.platformFee) || 0,
+            
+            plateTimeHoursInput: plateTimeInput,
+            singleTimeHoursInput: singleTimeInput,
+            fixedTimeShare: (settings as any).fixed_time_share || 0.15,
+            weightInputMode: form.weightInputMode
           });
+          
           setBatchResult(batch);
           setResult({
-            costMaterial: (batch.unitCost * quantity) / 100 * 40, 
+            costMaterial: batch.unitCost * totalQty, 
             costEnergy: 0,
             costMachine: 0,
             costPost: 0,
-            totalBaseCost: batch.unitCost * quantity,
-            precoTabela: (batch.unitPrice * quantity) / (1 - Number(form.discountPct)/100),
-            precoComDesconto: batch.unitPrice * quantity,
+            totalBaseCost: batch.unitCost * totalQty,
+            precoTabela: (batch.unitPrice * totalQty) / (1 - Number(form.discountPct)/100),
+            precoComDesconto: batch.unitPrice * totalQty,
             finalPrice: batch.finalPrice,
-            profit: batch.finalPrice - (batch.unitCost * quantity),
+            profit: batch.finalPrice - (batch.unitCost * totalQty),
             taxValue: 0,
             platformFeeValue: 0,
-            breakEvenPrice: batch.unitCost * quantity
+            breakEvenPrice: batch.unitCost * totalQty
           } as any);
         } else {
+          // Lógica unitária V2
+          const time = (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60;
           const res = calculatePricingV2({
             weightG: parseFloat(form.weightG) || 0,
-            timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
+            timeHours: time,
             materialPricePerKg: currentMat?.price_per_kg || 100,
             printerWatts: settings.watt,
             kwhPrice: settings.kwh,
@@ -264,10 +292,12 @@ function CalculatorPage() {
             platformFeePct: parseInt(form.platformFee) || 0,
             discountPct: parseInt(form.discountPct) || 0,
             failurePct: parseInt(form.failurePct) || 0,
+            quantity: 1
           });
           setResult(res);
           setBatchResult(null);
         }
+
       } else if (!form.useV2) {
         const res = calculatePricing({
           weightG: parseFloat(form.weightG) || 0,
@@ -303,10 +333,12 @@ function CalculatorPage() {
   }, [
     form.weightG,
     infill,
-    form.quantity,
+    form.totalPieces,
+    form.piecesPerPlate,
     form.useV2,
     batchMode,
     currentMat
+
   ]);
 
 
@@ -396,13 +428,31 @@ function CalculatorPage() {
 
 
   const calculate = () => {
-    if (!form.weightG || (!form.h && !form.m)) {
-      toast.error('Peso e tempo são obrigatórios.');
-      return;
+    const isBatchV3 = form.useV2 && batchMode && parseInt(form.totalPieces) > 1;
+    
+    if (isBatchV3) {
+      if (!form.plateTimeH && !form.plateTimeM) {
+        toast.error('Informe o tempo da placa (você encontra no seu slicer).');
+        return;
+      }
+      if (!form.weightG) {
+        toast.error('Informe o peso.');
+        return;
+      }
+      if (parseInt(form.piecesPerPlate) < 1 || parseInt(form.totalPieces) < 1) {
+        toast.error('Quantidades inválidas.');
+        return;
+      }
+    } else {
+      if (!form.weightG || (!form.h && !form.m)) {
+        toast.error('Peso e tempo são obrigatórios.');
+        return;
+      }
     }
     
     performCalculation();
   };
+
 
   const mutation = useMutation({
     mutationFn: (data: any) => saveFullQuoteFn({ data }),
@@ -417,31 +467,37 @@ function CalculatorPage() {
 
   const addItem = () => {
     if (!result) return;
+    const qty = Math.max(1, parseInt(form.totalPieces) || 1);
     const newItem = {
       name: form.project || 'Peça sem nome',
       description: `Material: ${currentMat?.name || 'Não definido'}`,
-      quantity: Number(form.quantity),
+      quantity: qty,
       material_name: currentMat?.name,
       weight_g: Number(form.weightG),
-      time_hours: (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
-      unit_price: result.finalPriceUnit || result.finalPrice / Number(form.quantity),
+      time_hours: batchResult ? batchResult.horasPorPeca : (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
+      unit_price: result.finalPriceUnit || result.finalPrice / qty,
       total_price: result.finalPrice,
-      cost_direct: result.subtotal / Number(form.quantity),
-      profit: result.profitUnit || result.profit / Number(form.quantity),
+      cost_direct: result.subtotal / qty,
+      profit: result.profitUnit || result.profit / qty,
       stl_path: currentFileMetadata?.path,
       stl_filename: currentFileMetadata?.filename,
       stl_size_bytes: currentFileMetadata?.size,
       stl_hash: currentFileMetadata?.hash,
-      batch_size: batchMode && parseInt(form.quantity) > 1 ? parseInt(form.quantity) : null,
-      batch_mode: batchMode && parseInt(form.quantity) > 1 ? batchPrintMode : null,
-      plate_capacity: batchResult?.totalPlates || null,
-      plates_count: batchResult?.totalPlates || null,
-      time_per_plate: batchResult?.mesaCheiaResult?.tempo || null,
-      unit_time_hours: batchResult?.totalTime ? batchResult.totalTime / parseInt(form.quantity) : (Number(form.h) || 0) + (Number(form.m) || 0) / 60
+      
+      // V3 Persistence
+      pieces_per_plate: batchResult ? parseInt(form.piecesPerPlate) : null,
+      total_pieces: qty,
+      plate_time_hours: batchResult ? (parseInt(form.plateTimeH) || 0) + (parseInt(form.plateTimeM) || 0) / 60 : null,
+      single_time_hours: batchResult && (form.singleTimeH || form.singleTimeM) ? (parseInt(form.singleTimeH) || 0) + (parseInt(form.singleTimeM) || 0) / 60 : null,
+      partial_plate_hours: batchResult?.horasParcial || null,
+      total_print_hours: batchResult?.horasTotal || (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
+      time_source: batchResult ? 'informado' : (stlData ? 'estimado' : 'informado'),
+      weight_input_mode: form.weightInputMode
     };
     setItems([...items, newItem]);
     toast.success('Peça adicionada ao orçamento!');
   };
+
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
@@ -593,12 +649,13 @@ function CalculatorPage() {
                 <Input placeholder="Ex: Suporte" value={form.project} onChange={e => setForm({...form, project: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
               <div className="space-y-2">
-                <Label>Quantidade</Label>
-                <Input type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Label>Total a fornecer</Label>
+                <Input type="number" min="1" value={form.totalPieces} onChange={e => setForm({...form, totalPieces: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
+
             </div>
 
-            {form.useV2 && parseInt(form.quantity) > 1 && (
+            {form.useV2 && parseInt(form.totalPieces) > 1 && (
               <div className="p-4 bg-[#07071a] border border-[#f97316]/30 rounded-xl space-y-4 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -612,56 +669,60 @@ function CalculatorPage() {
                   <div className="space-y-4 animate-in fade-in duration-300">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-[10px] uppercase text-gray-400">Como imprime</Label>
-                        <Select value={batchPrintMode} onValueChange={(v: any) => setBatchPrintMode(v)}>
-                          <SelectTrigger className="bg-[#111128] border-[#22223a] h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#111128] border-[#22223a] text-white">
-                            <SelectItem value="simultaneo">Simultâneo (todas juntas)</SelectItem>
-                            <SelectItem value="sequencial">Sequencial (uma por vez)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] uppercase text-gray-400">Peças por mesa</Label>
+                        <Label className="text-[10px] uppercase text-gray-400">Peças por placa</Label>
                         <div className="flex gap-1">
                           <Input 
                             type="number" 
                             min="1" 
-                            value={partsPerPlate} 
-                            onChange={e => setPartsPerPlate(Math.max(1, parseInt(e.target.value) || 1))} 
+                            value={form.piecesPerPlate} 
+                            onChange={e => setForm({...form, piecesPerPlate: e.target.value})} 
                             className="bg-[#111128] border-[#22223a] h-8 text-xs"
                           />
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 text-[9px] px-2 bg-[#22223a] border-[#33334d]"
-                            onClick={() => {
-                              if (stlData && settings) {
-                                const cap = plateCapacity({
-                                  dimX: stlData.dimX,
-                                  dimY: stlData.dimY,
-                                  dimZ: stlData.dimZ,
+                        </div>
+                        {stlData && settings && (
+                          <div className="text-[9px] text-gray-500 flex items-center gap-1">
+                             Cabem ~{plateCapacity({
+                                dimX: stlData.dimX, dimY: stlData.dimY, dimZ: stlData.dimZ,
+                                bedX: Number((settings as any).bed_x) || 256,
+                                bedY: Number((settings as any).bed_y) || 256,
+                                bedZ: Number((settings as any).bed_z) || 256,
+                                margin: Number((settings as any).plate_margin) || 5,
+                                gap: Number((settings as any).part_gap) || 8
+                             }).capacidade} na sua mesa
+                             <button 
+                               className="text-[#f97316] hover:underline"
+                               onClick={() => setForm(f => ({ ...f, piecesPerPlate: plateCapacity({
+                                  dimX: stlData.dimX, dimY: stlData.dimY, dimZ: stlData.dimZ,
                                   bedX: Number((settings as any).bed_x) || 256,
                                   bedY: Number((settings as any).bed_y) || 256,
                                   bedZ: Number((settings as any).bed_z) || 256,
                                   margin: Number((settings as any).plate_margin) || 5,
                                   gap: Number((settings as any).part_gap) || 8
-                                });
-                                setPartsPerPlate(cap.capacidade || 1);
-                              }
-                            }}
-                          >
-                            IDEAL
-                          </Button>
-                        </div>
+                               }).capacidade.toString() }))}
+                             >
+                               usar
+                             </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-gray-400">Modo de Impressão</Label>
+                        <Select value={batchPrintMode} onValueChange={(v: any) => setBatchPrintMode(v)}>
+                          <SelectTrigger className="bg-[#111128] border-[#22223a] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                            <SelectItem value="simultaneo">Simultâneo</SelectItem>
+                            <SelectItem value="sequencial">Sequencial</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             )}
+
 
 
             <div className="grid grid-cols-2 gap-4 text-white">
@@ -684,19 +745,55 @@ function CalculatorPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Peso (g)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Peso (g)</Label>
+                  <div className="flex bg-[#07071a] border border-[#22223a] rounded-lg p-0.5 scale-75 origin-right">
+                    <button 
+                      className={cn("px-2 py-0.5 rounded text-[9px] font-bold transition-all", form.weightInputMode === 'peca' ? "bg-[#f97316] text-white" : "text-gray-500")}
+                      onClick={() => setForm(f => ({ ...f, weightInputMode: 'peca' }))}
+                    >
+                      PEÇA
+                    </button>
+                    <button 
+                      className={cn("px-2 py-0.5 rounded text-[9px] font-bold transition-all", form.weightInputMode === 'placa' ? "bg-[#f97316] text-white" : "text-gray-500")}
+                      onClick={() => setForm(f => ({ ...f, weightInputMode: 'placa' }))}
+                    >
+                      PLACA
+                    </button>
+                  </div>
+                </div>
                 <Input type="number" value={form.weightG} onChange={e => setForm({...form, weightG: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
+
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
-                <Label>Tempo de Impressão</Label>
+                <Label>{batchMode && parseInt(form.totalPieces) > 1 ? "Tempo da PLACA CHEIA" : "Tempo de Impressão"}</Label>
                 <div className="flex gap-2">
-                  <Input type="number" placeholder="h" value={form.h} onChange={e => setForm({...form, h: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                  <Input type="number" placeholder="min" value={form.m} onChange={e => setForm({...form, m: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  <Input type="number" placeholder="h" value={batchMode && parseInt(form.totalPieces) > 1 ? form.plateTimeH : form.h} onChange={e => setForm(f => ({ ...f, [batchMode && parseInt(form.totalPieces) > 1 ? 'plateTimeH' : 'h']: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
+                  <Input type="number" placeholder="min" value={batchMode && parseInt(form.totalPieces) > 1 ? form.plateTimeM : form.m} onChange={e => setForm(f => ({ ...f, [batchMode && parseInt(form.totalPieces) > 1 ? 'plateTimeM' : 'm']: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
                 </div>
+                {form.useV2 && !batchMode && stlData && !form.h && !form.m && (
+                   <button 
+                     className="text-[10px] text-gray-500 hover:text-[#f97316] text-left"
+                     onClick={() => {
+                        const time = estimateTimeHours({
+                          volumeExtrudadoMm3, dimZ: stlData.dimZ,
+                          layerHeight: settings?.layer_height || 0.2,
+                          volumetricRate: settings?.volumetric_rate || 8,
+                          calibration: settings?.time_calibration || 1.0
+                        });
+                        const h = Math.floor(time);
+                        const m = Math.round((time - h) * 60);
+                        setForm(f => ({ ...f, h: h.toString(), m: m.toString() }));
+                     }}
+                   >
+                     Estimativa: {Math.floor(estimateTimeHours({ volumeExtrudadoMm3, dimZ: stlData.dimZ, layerHeight: settings?.layer_height || 0.2, volumetricRate: settings?.volumetric_rate || 8, calibration: settings?.time_calibration || 1.0 }))}h {Math.round((estimateTimeHours({ volumeExtrudadoMm3, dimZ: stlData.dimZ, layerHeight: settings?.layer_height || 0.2, volumetricRate: settings?.volumetric_rate || 8, calibration: settings?.time_calibration || 1.0 }) % 1) * 60)}min — clique para usar
+                   </button>
+                )}
               </div>
+
               <div className="space-y-2">
                 <Label>Embalagem (R$)</Label>
                 <Input type="number" value={form.packaging} onChange={e => setForm({...form, packaging: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
@@ -705,24 +802,43 @@ function CalculatorPage() {
 
             {form.useV2 && (
               <div className="grid grid-cols-2 gap-4 text-white animate-fadeIn">
-                <div className="space-y-2">
-                  <Label>Imposto (%)</Label>
-                  <Input type="number" value={form.taxPct} onChange={e => setForm({...form, taxPct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Setup (min)</Label>
-                  <Input type="number" value={form.setupMinutes} onChange={e => setForm({...form, setupMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Custo Pós-Processo (R$/h)</Label>
-                  <Input type="number" value={form.postProcessingPriceHour} onChange={e => setForm({...form, postProcessingPriceHour: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tempo Pós (min)</Label>
-                  <Input type="number" value={form.postProcessingMinutes} onChange={e => setForm({...form, postProcessingMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                {batchMode && parseInt(form.totalPieces) > 1 && (
+                  <div className="col-span-2 space-y-2 border-b border-[#22223a] pb-4 mb-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Tempo de 1 PEÇA SOZINHA (Opcional)</Label>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input type="number" placeholder="h" value={form.singleTimeH} onChange={e => setForm(f => ({ ...f, singleTimeH: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
+                      <Input type="number" placeholder="min" value={form.singleTimeM} onChange={e => setForm(f => ({ ...f, singleTimeM: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <p className="text-[9px] text-gray-500">
+                      Informando o tempo de uma peça sozinha, o cálculo da última placa fica exato.
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Imposto (%)</Label>
+                    <Input type="number" value={form.taxPct} onChange={e => setForm({...form, taxPct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Setup (min)</Label>
+                    <Input type="number" value={form.setupMinutes} onChange={e => setForm({...form, setupMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Custo Pós-Processo (R$/h)</Label>
+                    <Input type="number" value={form.postProcessingPriceHour} onChange={e => setForm({...form, postProcessingPriceHour: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tempo Pós (min)</Label>
+                    <Input type="number" value={form.postProcessingMinutes} onChange={e => setForm({...form, postProcessingMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
                 </div>
               </div>
             )}
+
+
 
             <Separator className="bg-[#22223a]" />
 
@@ -926,7 +1042,7 @@ function CalculatorPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', clientId: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2', validUntil: format(addDays(new Date(), 15), 'yyyy-MM-dd'), deliveryDays: '7', paymentTerms: '', shippingPrice: '0', publicNotes: '', title: '' }); setStlData(null); setStlFileName(''); setCurrentFileMetadata(null); setResult(null); setItems([]); }}>
+               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', clientId: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2', validUntil: format(addDays(new Date(), 15), 'yyyy-MM-dd'), deliveryDays: '7', paymentTerms: '', shippingPrice: '0', publicNotes: '', title: '', plateTimeH: '', plateTimeM: '', singleTimeH: '', singleTimeM: '', weightInputMode: 'peca', totalPieces: '1', piecesPerPlate: '1' }); setStlData(null); setStlFileName(''); setCurrentFileMetadata(null); setResult(null); setItems([]); }}>
                  Limpar
                </Button>
                  <Button className="flex-1 bg-[#111128] border border-[#22223a] hover:bg-[#22223a] gap-2 text-white" onClick={addItem} disabled={!result}>
@@ -968,7 +1084,13 @@ function CalculatorPage() {
                       <div className="text-right">
                         <p className="text-sm font-bold">R$ {item.total_price.toFixed(2)}</p>
                         <p className="text-[10px] text-green-500">Lucro: R$ {item.profit.toFixed(2)}</p>
+                        {item.total_pieces && item.total_pieces > 1 && (
+                           <p className="text-[8px] text-gray-500 font-mono">
+                             {item.total_pieces} un · {Math.ceil(item.total_pieces / (item.pieces_per_plate || 1))} pl · {Math.floor(item.total_print_hours || 0)}h
+                           </p>
+                        )}
                       </div>
+
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(idx)}>
                         <Trash2 size={14} />
                       </Button>
@@ -1001,18 +1123,38 @@ function CalculatorPage() {
       </div>
 
       <div className="space-y-6">
-        {form.useV2 && parseInt(form.quantity) > 1 && batchMode && batchResult && (
+        {form.useV2 && parseInt(form.totalPieces) > 1 && batchResult && (
           <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-lg">Análise de Lote</CardTitle>
+                  <CardTitle className="text-lg">Análise de Produção em Lote</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Produção otimizada para {form.quantity} unidades
+                    {batchResult.totalPieces} peças ÷ {batchResult.piecesPerPlate} por placa = {batchResult.placasCheias} {batchResult.placasCheias === 1 ? 'placa cheia' : 'placas cheias'}
+                    {batchResult.resto > 0 ? ` + 1 placa com ${batchResult.resto} peças` : ''}
                   </CardDescription>
                 </div>
-                <div className="bg-[#f97316]/20 text-[#f97316] px-3 py-1 rounded-full text-xs font-bold border border-[#f97316]/30">
-                  {batchResult.totalPlates} {batchResult.totalPlates === 1 ? 'mesa' : 'mesas'}
+                <div className={cn(
+                  "px-3 py-1 rounded-full text-[10px] font-bold border",
+                  batchResult.exato 
+                    ? "bg-green-500/20 text-green-500 border-green-500/30" 
+                    : "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                )}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">
+                          {batchResult.exato ? 'EXATO' : 'APROXIMADO'}
+                        </span>
+                      </TooltipTrigger>
+
+                      {!batchResult.exato && (
+                        <TooltipContent className="bg-[#111128] border-[#22223a] text-white text-[10px] max-w-xs p-2">
+                          Assumindo {((settings as any)?.fixed_time_share * 100 || 15)}% de tempo fixo — informe o tempo de 1 peça para ficar exato.
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             </CardHeader>
@@ -1029,15 +1171,16 @@ function CalculatorPage() {
                   <p className="text-[10px] text-gray-400">Solo: R$ {(result?.finalPrice || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-[#07071a] p-4 rounded-xl border border-[#22223a] space-y-1">
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Risco de Perda</p>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Risco por Placa</p>
                   {(() => {
                     const risk = (plateRisk({
-                      n: partsPerPlate,
+                      n: batchResult.piecesPerPlate,
                       failurePct: Number(form.failurePct) || 0,
                       modo: batchPrintMode,
                       killsPlate: (settings as any)?.batch_kills_plate ?? true,
                       lossFactor: (settings as any)?.batch_loss_factor || 0.6
                     }).pMesa * 100);
+
                     
                     let color = "text-green-500";
                     if (risk > 35) color = "text-red-500";
@@ -1056,82 +1199,137 @@ function CalculatorPage() {
               </div>
 
               {/* Gráfico da Curva de Custo */}
-              <div className="h-48 w-full mt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={(() => {
-                    if (!stlData || !settings) return [];
-                    const data = [];
-                    const capMax = Math.min(100, (plateCapacity({
-                      dimX: stlData.dimX,
-                      dimY: stlData.dimY,
-                      dimZ: stlData.dimZ,
-                      bedX: Number((settings as any).bed_x) || 256,
-                      bedY: Number((settings as any).bed_y) || 256,
-                      bedZ: Number((settings as any).bed_z) || 256,
-                      margin: Number((settings as any).plate_margin) || 5,
-                      gap: Number((settings as any).part_gap) || 8
-                    }).capacidade || 1));
-
-                    for (let n = 1; n <= capMax; n++) {
-                      const b = calcBatch({
-                        quantidade: parseInt(form.quantity),
-                        n: n,
-                        modo: batchPrintMode,
-                        volumeExtrudadoMm3,
-                        pesoG: parseFloat(form.weightG) || 0,
-                        pesoSuporteG,
-                        plateWasteG: Number((settings as any).plate_waste_g) || 5,
-                        precoKg: currentMat?.price_per_kg || 100,
-                        watts: settings.watt,
-                        precoKwh: settings.kwh,
-                        precoHoraMaquina: settings.machine,
-                        setupMinutes: Number(form.setupMinutes) || 0,
-                        precoHoraMaoObra: settings.labor,
-                        posMinutos: Number(form.postProcessingMinutes) || 0,
-                        precoHoraPos: Number(form.postProcessingPriceHour) || 0,
-                        embalagem: Number(form.packaging) || 0,
+              {batchResult.exato ? (
+                <div className="h-48 w-full mt-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={(() => {
+                      if (!stlData || !settings) return [];
+                      const data = [];
+                      const capMax = Math.min(100, (plateCapacity({
+                        dimX: stlData.dimX,
+                        dimY: stlData.dimY,
                         dimZ: stlData.dimZ,
-                        layerHeight: settings.layer_height || 0.2,
-                        volumetricRate: settings.volumetric_rate || 8,
-                        travelSeg: Number((settings as any).batch_travel_seconds) || 2,
-                        calibracao: settings.time_calibration || 1.0,
-                        failurePct: Number(form.failurePct) || 0,
-                        killsPlate: (settings as any).batch_kills_plate ?? true,
-                        lossFactor: (settings as any).batch_loss_factor || 0.6,
-                        marginPct: Number(form.marginPct) || 0,
-                        discountPct: Number(form.discountPct) || 0,
-                        taxPct: Number(form.taxPct) || 0,
-                        platformFeePct: Number(form.platformFee) || 0
-                      });
-                      data.push({ n, unitPrice: b.unitPrice });
-                    }
-                    return data;
-                  })()}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#22223a" />
-                    <XAxis dataKey="n" stroke="#666" fontSize={10} />
-                    <YAxis hide domain={['auto', 'auto']} />
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#111128', border: '1px solid #22223a', borderRadius: '8px' }}
-                      itemStyle={{ color: '#f97316' }}
-                      labelStyle={{ color: '#fff' }}
-                    />
-                    <ReferenceLine x={partsPerPlate} stroke="#f97316" strokeDasharray="3 3" />
-                    <Line type="monotone" dataKey="unitPrice" stroke="#f97316" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-                <p className="text-[10px] text-center text-gray-500 mt-2">Custo Unitário x Peças por Mesa</p>
-              </div>
+                        bedX: Number((settings as any).bed_x) || 256,
+                        bedY: Number((settings as any).bed_y) || 256,
+                        bedZ: Number((settings as any).bed_z) || 256,
+                        margin: Number((settings as any).plate_margin) || 5,
+                        gap: Number((settings as any).part_gap) || 8
+                      }).capacidade || 1));
+
+                      for (let n = 1; n <= capMax; n++) {
+                        const b = calcBatch({
+                          quantidade: parseInt(form.totalPieces),
+                          n: n,
+                          modo: batchPrintMode,
+                          volumeExtrudadoMm3,
+                          pesoG: parseFloat(form.weightG) || 0,
+                          pesoSuporteG,
+                          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                          precoKg: currentMat?.price_per_kg || 100,
+                          watts: settings.watt,
+                          precoKwh: settings.kwh,
+                          precoHoraMaquina: settings.machine,
+                          setupMinutes: Number(form.setupMinutes) || 0,
+                          precoHoraMaoObra: settings.labor,
+                          posMinutos: Number(form.postProcessingMinutes) || 0,
+                          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                          embalagem: Number(form.packaging) || 0,
+                          
+                          // V3
+                          plateTimeHoursInput: Number(form.plateTimeH) + (Number(form.plateTimeM) / 60),
+                          singleTimeHoursInput: n === 1 ? (Number(form.singleTimeH) + (Number(form.singleTimeM) / 60)) : undefined,
+                          fixedTimeShare: (settings as any).fixed_time_share || 0.15,
+                          weightInputMode: form.weightInputMode
+                        });
+                        data.push({ n, unitPrice: b.unitPrice });
+                      }
+                      return data;
+                    })()}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#22223a" />
+                      <XAxis dataKey="n" stroke="#666" fontSize={10} />
+                      <YAxis hide domain={['auto', 'auto']} />
+                      <RechartsTooltip 
+                        contentStyle={{ backgroundColor: '#111128', border: '1px solid #22223a', borderRadius: '8px' }}
+                        itemStyle={{ color: '#f97316' }}
+                        labelStyle={{ color: '#fff' }}
+                      />
+                      <ReferenceLine x={batchResult.piecesPerPlate} stroke="#f97316" strokeDasharray="3 3" />
+                      <Line type="monotone" dataKey="unitPrice" stroke="#f97316" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <p className="text-[10px] text-center text-gray-500 mt-2">Custo Unitário x Peças por Mesa</p>
+                </div>
+              ) : (
+                <div className="bg-[#07071a] p-4 rounded-xl border border-dashed border-[#22223a] text-center mt-4">
+                  <p className="text-[10px] text-gray-500">Informe o tempo de 1 peça sozinha para ver o ponto ideal</p>
+                </div>
+              )}
+
 
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Produção total:</span>
-                  <span className="font-mono">{batchResult.mesasCheias} mesa{batchResult.mesasCheias !== 1 ? 's' : ''} cheia{batchResult.mesasCheias !== 1 ? 's' : ''} {batchResult.resto > 0 ? `+ 1 mesa com ${batchResult.resto}` : ''}</span>
+                  <span className="text-gray-400">Tempo da placa cheia:</span>
+                  <span className="font-mono text-white">
+                    {Math.floor(Number(form.plateTimeH))}h {Math.round(Number(form.plateTimeM))}min
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-gray-400">Tempo total:</span>
-                  <span className="font-mono">{Math.floor(batchResult.totalTime)}h {Math.round((batchResult.totalTime - Math.floor(batchResult.totalTime)) * 60)}min</span>
+                  <span className="text-gray-400">Tempo da placa incompleta:</span>
+                  <span className="font-mono text-white">
+                    {Math.floor(batchResult.horasParcial)}h {Math.round((batchResult.horasParcial - Math.floor(batchResult.horasParcial)) * 60)}min
+                  </span>
                 </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400 font-bold">Tempo total de impressão:</span>
+                  <span className="font-black text-[#f97316]">
+                    {Math.floor(batchResult.horasTotal)}h {Math.round((batchResult.horasTotal - Math.floor(batchResult.horasTotal)) * 60)}min
+                    <span className="text-[10px] text-gray-500 font-normal ml-1">
+                      (≈ {Math.ceil(batchResult.horasTotal / ((settings as any)?.hours_per_day || 20))} dias a {(settings as any)?.hours_per_day || 20}h/dia)
+                    </span>
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs border-t border-[#22223a] pt-2">
+                  <span className="text-gray-400">Tempo por peça:</span>
+                  <span className="font-mono text-white">{batchResult.horasPorPeca.toFixed(2)}h</span>
+                </div>
+                {batchResult && (
+                  <div className="pt-4 border-t border-[#22223a] space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-gray-400">Prazo de entrega (dias)</Label>
+                      <Input 
+                        type="number" 
+                        value={form.deliveryDays} 
+                        onChange={e => setForm({...form, deliveryDays: e.target.value})} 
+                        className="w-20 bg-[#07071a] border-[#22223a] h-8 text-white" 
+                      />
+                    </div>
+                    {(() => {
+                      const printDays = Math.ceil(batchResult.horasTotal / ((settings as any)?.hours_per_day || 20));
+                      const suggestedDays = printDays + 3;
+                      const currentDays = Number(form.deliveryDays);
+                      
+                      return (
+                        <div className="space-y-2">
+                          <button 
+                            className="text-[10px] text-[#f97316] hover:underline"
+                            onClick={() => setForm(f => ({ ...f, deliveryDays: suggestedDays.toString() }))}
+                          >
+                            Só a impressão leva ~{printDays} dias. Usar {suggestedDays}?
+                          </button>
+                          {currentDays > 0 && currentDays < printDays && (
+                            <div className="flex items-center gap-2 text-amber-500 text-[10px] font-bold bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                              <AlertCircle size={12} />
+                              <span>Você prometeu {currentDays} dias, mas só a impressão leva {printDays}.</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
+
+
             </CardContent>
           </Card>
         )}

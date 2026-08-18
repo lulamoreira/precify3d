@@ -261,20 +261,28 @@ export type Database = {
           id: string
           material_name: string | null
           name: string
+          partial_plate_hours: number | null
+          pieces_per_plate: number | null
+          plate_time_hours: number | null
           position: number
           preview_png: string | null
           profit: number | null
           quantity: number
           quote_id: string
+          single_time_hours: number | null
           stl_filename: string | null
           stl_hash: string | null
           stl_path: string | null
           stl_size_bytes: number | null
           time_hours: number | null
+          time_source: string | null
+          total_pieces: number | null
           total_price: number
+          total_print_hours: number | null
           unit_price: number
           user_id: string
           weight_g: number | null
+          weight_input_mode: string | null
         }
         Insert: {
           cost_direct?: number | null
@@ -283,20 +291,28 @@ export type Database = {
           id?: string
           material_name?: string | null
           name: string
+          partial_plate_hours?: number | null
+          pieces_per_plate?: number | null
+          plate_time_hours?: number | null
           position?: number
           preview_png?: string | null
           profit?: number | null
           quantity?: number
           quote_id: string
+          single_time_hours?: number | null
           stl_filename?: string | null
           stl_hash?: string | null
           stl_path?: string | null
           stl_size_bytes?: number | null
           time_hours?: number | null
+          time_source?: string | null
+          total_pieces?: number | null
           total_price: number
+          total_print_hours?: number | null
           unit_price: number
           user_id: string
           weight_g?: number | null
+          weight_input_mode?: string | null
         }
         Update: {
           cost_direct?: number | null
@@ -305,20 +321,28 @@ export type Database = {
           id?: string
           material_name?: string | null
           name?: string
+          partial_plate_hours?: number | null
+          pieces_per_plate?: number | null
+          plate_time_hours?: number | null
           position?: number
           preview_png?: string | null
           profit?: number | null
           quantity?: number
           quote_id?: string
+          single_time_hours?: number | null
           stl_filename?: string | null
           stl_hash?: string | null
           stl_path?: string | null
           stl_size_bytes?: number | null
           time_hours?: number | null
+          time_source?: string | null
+          total_pieces?: number | null
           total_price?: number
+          total_print_hours?: number | null
           unit_price?: number
           user_id?: string
           weight_g?: number | null
+          weight_input_mode?: string | null
         }
         Relationships: [
           {
@@ -360,7 +384,10 @@ export type Database = {
           material_name: string
           notes: string | null
           packaging: number
+          partial_plate_hours: number | null
           payment_terms: string | null
+          pieces_per_plate: number | null
+          plate_time_hours: number | null
           platform_fee: number
           platform_fee_value: number
           platform_name: string | null
@@ -372,6 +399,7 @@ export type Database = {
           quantity: number | null
           quote_number: string | null
           shipping_price: number | null
+          single_time_hours: number | null
           sold_at: string | null
           sold_price: number | null
           sold_profit: number | null
@@ -384,11 +412,15 @@ export type Database = {
           tax_pct: number | null
           tax_value: number | null
           time_hours: number
+          time_source: string | null
           title: string | null
+          total_pieces: number | null
+          total_print_hours: number | null
           user_id: string
           valid_until: string | null
           viewed_at: string | null
           weight_g: number
+          weight_input_mode: string | null
         }
         Insert: {
           client?: string | null
@@ -419,7 +451,10 @@ export type Database = {
           material_name: string
           notes?: string | null
           packaging: number
+          partial_plate_hours?: number | null
           payment_terms?: string | null
+          pieces_per_plate?: number | null
+          plate_time_hours?: number | null
           platform_fee: number
           platform_fee_value: number
           platform_name?: string | null
@@ -431,6 +466,7 @@ export type Database = {
           quantity?: number | null
           quote_number?: string | null
           shipping_price?: number | null
+          single_time_hours?: number | null
           sold_at?: string | null
           sold_price?: number | null
           sold_profit?: number | null
@@ -443,11 +479,15 @@ export type Database = {
           tax_pct?: number | null
           tax_value?: number | null
           time_hours: number
+          time_source?: string | null
           title?: string | null
+          total_pieces?: number | null
+          total_print_hours?: number | null
           user_id: string
           valid_until?: string | null
           viewed_at?: string | null
           weight_g: number
+          weight_input_mode?: string | null
         }
         Update: {
           client?: string | null
@@ -478,7 +518,10 @@ export type Database = {
           material_name?: string
           notes?: string | null
           packaging?: number
+          partial_plate_hours?: number | null
           payment_terms?: string | null
+          pieces_per_plate?: number | null
+          plate_time_hours?: number | null
           platform_fee?: number
           platform_fee_value?: number
           platform_name?: string | null
@@ -490,6 +533,7 @@ export type Database = {
           quantity?: number | null
           quote_number?: string | null
           shipping_price?: number | null
+          single_time_hours?: number | null
           sold_at?: string | null
           sold_price?: number | null
           sold_profit?: number | null
@@ -502,11 +546,15 @@ export type Database = {
           tax_pct?: number | null
           tax_value?: number | null
           time_hours?: number
+          time_source?: string | null
           title?: string | null
+          total_pieces?: number | null
+          total_print_hours?: number | null
           user_id?: string
           valid_until?: string | null
           viewed_at?: string | null
           weight_g?: number
+          weight_input_mode?: string | null
         }
         Relationships: [
           {
@@ -632,6 +680,8 @@ export type Database = {
           created_at: string
           engine_version: string | null
           failure: number
+          fixed_time_share: number
+          hours_per_day: number
           id: string
           kwh: number
           labor: number
@@ -656,6 +706,8 @@ export type Database = {
           created_at?: string
           engine_version?: string | null
           failure?: number
+          fixed_time_share?: number
+          hours_per_day?: number
           id?: string
           kwh?: number
           labor?: number
@@ -680,6 +732,8 @@ export type Database = {
           created_at?: string
           engine_version?: string | null
           failure?: number
+          fixed_time_share?: number
+          hours_per_day?: number
           id?: string
           kwh?: number
           labor?: number
