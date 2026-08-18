@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package } from 'lucide-react';
+import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package, Calculator, Gauge, ShieldCheck } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { useServerFn } from '@tanstack/react-start';
 
 
@@ -37,7 +39,20 @@ function SettingsPage() {
   const [newMaterial, setNewMaterial] = useState({ name: '', price_per_kg: '', color: '#f97316' });
 
   useEffect(() => {
-    if (settings) setForm(settings);
+    if (settings) {
+      setForm({
+        ...settings,
+        engine_version: settings.engine_version || 'v1',
+        tax_pct: settings.tax_pct?.toString() || '0',
+        setup_minutes: settings.setup_minutes?.toString() || '15',
+        post_processing_price_hour: settings.post_processing_price_hour?.toString() || '0',
+        layer_height: settings.layer_height?.toString() || '0.2',
+        nozzle_width: settings.nozzle_width?.toString() || '0.4',
+        walls: settings.walls?.toString() || '3',
+        volumetric_rate: settings.volumetric_rate?.toString() || '8.0',
+        time_calibration: settings.time_calibration?.toString() || '1.0'
+      });
+    }
   }, [settings]);
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
@@ -86,72 +101,149 @@ function SettingsPage() {
       </div>
 
       <form onSubmit={handleUpdateSettings} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Zap size={18} className="text-[#f97316]" />
-                Energia Elétrica
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Custo kWh (R$)</Label>
-                <Input type="number" step="0.01" value={form.kwh} onChange={e => setForm({...form, kwh: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-              <div className="space-y-2">
-                <Label>Potência da Impressora (W)</Label>
-                <Input type="number" value={form.watt} onChange={e => setForm({...form, watt: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="costs" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-[#111128] border border-[#22223a] rounded-xl p-1 mb-8">
+            <TabsTrigger value="costs" className="rounded-lg data-[state=active]:bg-[#f97316] data-[state=active]:text-white">Custos & Padrões</TabsTrigger>
+            <TabsTrigger value="technical" className="rounded-lg data-[state=active]:bg-[#f97316] data-[state=active]:text-white">Impressão & Impostos</TabsTrigger>
+          </TabsList>
 
-          <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign size={18} className="text-[#f97316]" />
-                Mão de Obra & Máquina
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Custo/Hora Mão de Obra (R$/h)</Label>
-                <Input type="number" step="0.01" value={form.labor} onChange={e => setForm({...form, labor: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-              <div className="space-y-2">
-                <Label>Desgaste da Máquina (R$/h)</Label>
-                <Input type="number" step="0.01" value={form.machine} onChange={e => setForm({...form, machine: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="costs" className="space-y-6 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Zap size={18} className="text-[#f97316]" />
+                    Energia Elétrica
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Custo kWh (R$)</Label>
+                    <Input type="number" step="0.01" value={form.kwh} onChange={e => setForm({...form, kwh: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Potência da Impressora (W)</Label>
+                    <Input type="number" value={form.watt} onChange={e => setForm({...form, watt: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden md:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <CheckCircle2 size={18} className="text-[#f97316]" />
-                Padrões de Orçamento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label>Margem (%)</Label>
-                <Input type="number" value={form.margin} onChange={e => setForm({...form, margin: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-              <div className="space-y-2">
-                <Label>Falha (%)</Label>
-                <Input type="number" value={form.failure} onChange={e => setForm({...form, failure: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-              <div className="space-y-2">
-                <Label>Embalagem (R$)</Label>
-                <Input type="number" step="0.01" value={form.packaging} onChange={e => setForm({...form, packaging: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-              <div className="space-y-2">
-                <Label>Taxa Plataforma (%)</Label>
-                <Input type="number" step="0.01" value={form.platform_fee} onChange={e => setForm({...form, platform_fee: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <DollarSign size={18} className="text-[#f97316]" />
+                    Mão de Obra & Máquina
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Custo/Hora Mão de Obra (R$/h)</Label>
+                    <Input type="number" step="0.01" value={form.labor} onChange={e => setForm({...form, labor: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Desgaste da Máquina (R$/h)</Label>
+                    <Input type="number" step="0.01" value={form.machine} onChange={e => setForm({...form, machine: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <CheckCircle2 size={18} className="text-[#f97316]" />
+                    Padrões de Orçamento
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label>Margem (%)</Label>
+                    <Input type="number" value={form.margin} onChange={e => setForm({...form, margin: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Falha (%)</Label>
+                    <Input type="number" value={form.failure} onChange={e => setForm({...form, failure: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Embalagem (R$)</Label>
+                    <Input type="number" step="0.01" value={form.packaging} onChange={e => setForm({...form, packaging: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Taxa Plataforma (%)</Label>
+                    <Input type="number" step="0.01" value={form.platform_fee} onChange={e => setForm({...form, platform_fee: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="technical" className="space-y-6 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Calculator size={18} className="text-[#f97316]" />
+                    Motor V2 & Impostos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-3 bg-[#07071a] border border-[#22223a] rounded-xl">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Motor V2 (Ativo por Padrão)</Label>
+                      <p className="text-[10px] text-gray-500">Usa lógica de Gross-up em todos os orçamentos</p>
+                    </div>
+                    <Switch checked={form.engine_version === 'v2'} onCheckedChange={checked => setForm({...form, engine_version: checked ? 'v2' : 'v1'})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alíquota de Imposto (%)</Label>
+                    <Input type="number" step="0.1" value={form.tax_pct} onChange={e => setForm({...form, tax_pct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Custo Pós-Processamento (R$/h)</Label>
+                    <Input type="number" step="0.1" value={form.post_processing_price_hour} onChange={e => setForm({...form, post_processing_price_hour: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tempo de Setup Fixo (min)</Label>
+                    <Input type="number" value={form.setup_minutes} onChange={e => setForm({...form, setup_minutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Gauge size={18} className="text-[#f97316]" />
+                    Estimativa Técnica
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Camada (mm)</Label>
+                      <Input type="number" step="0.01" value={form.layer_height} onChange={e => setForm({...form, layer_height: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bico (mm)</Label>
+                      <Input type="number" step="0.1" value={form.nozzle_width} onChange={e => setForm({...form, nozzle_width: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Paredes (Qtd)</Label>
+                      <Input type="number" value={form.walls} onChange={e => setForm({...form, walls: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Taxa Vol. (mm³/s)</Label>
+                      <Input type="number" step="0.1" value={form.volumetric_rate} onChange={e => setForm({...form, volumetric_rate: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Calibração de Tempo (1.0 = 100%)</Label>
+                    <Input type="number" step="0.01" value={form.time_calibration} onChange={e => setForm({...form, time_calibration: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+        
         <div className="flex justify-end">
           <Button type="submit" className="bg-[#f97316] hover:bg-[#d96314] px-8 rounded-xl">Salvar Alterações</Button>
         </div>

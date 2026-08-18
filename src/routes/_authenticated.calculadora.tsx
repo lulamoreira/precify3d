@@ -10,11 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, type STLData } from '@/lib/stl-utils';
-import { calculatePricing, type PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon } from 'lucide-react';
+import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, parseGCode, estimateWeightV2, estimateTimeHours, type STLData } from '@/lib/stl-utils';
+import { calculatePricing, calculatePricingV2, type PricingResult } from '@/lib/pricing-utils';
+import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import * as fflate from 'fflate';
 import { useServerFn } from '@tanstack/react-start';
 
 export const Route = createFileRoute('/_authenticated/calculadora')({
@@ -43,7 +45,13 @@ function CalculatorPage() {
     packaging: '',
     platformFee: '',
     platformName: 'none',
-    notes: ''
+    notes: '',
+    quantity: '1',
+    taxPct: '',
+    setupMinutes: '',
+    postProcessingPriceHour: '',
+    postProcessingMinutes: '',
+    useV2: false
   });
 
   const [stlData, setStlData] = useState<STLData | null>(null);
@@ -65,39 +73,74 @@ function CalculatorPage() {
         marginPct: settings.margin.toString(),
         packaging: settings.packaging.toString(),
         platformFee: settings.platform_fee.toString(),
+        taxPct: settings.tax_pct?.toString() || '0',
+        setupMinutes: settings.setup_minutes?.toString() || '15',
+        postProcessingPriceHour: settings.post_processing_price_hour?.toString() || '0',
+        useV2: settings.engine_version === 'v2'
       }));
     }
   }, [settings, materials]);
 
   useEffect(() => {
     if (stlData) {
-      const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
-      setForm(f => ({ ...f, weightG: weight.toString() }));
+      let weight = 0;
+      if (form.useV2 && settings) {
+        weight = estimateWeightV2(
+          stlData, 
+          density, 
+          infill, 
+          settings.walls || 3, 
+          settings.layer_height || 0.2, 
+          settings.nozzle_width || 0.4
+        );
+        
+        const time = estimateTimeHours(stlData.volCm3, settings.volumetric_rate || 8, settings.time_calibration || 1.0);
+        const h = Math.floor(time);
+        const m = Math.round((time - h) * 60);
+        setForm(f => ({ ...f, weightG: weight.toString(), h: h.toString(), m: m.toString() }));
+      } else {
+        weight = calcWeightFromSTL(stlData.volCm3, density, infill);
+        setForm(f => ({ ...f, weightG: weight.toString() }));
+      }
     }
-  }, [stlData, infill, density]);
+  }, [stlData, infill, density, form.useV2, settings]);
 
-  const handleSTLFile = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.stl')) {
-      toast.error('Por favor, selecione um arquivo .stl');
-      return;
-    }
-
+  const handleFile = async (file: File) => {
+    const ext = file.name.toLowerCase().split('.').pop();
     setStlLoading(true);
     setStlFileName(file.name);
     
     try {
       const buffer = await file.arrayBuffer();
-      const tris = parseSTLBuffer(buffer);
-      const stats = analyzeTriangles(tris);
-      setStlData(stats);
-      toast.success('Arquivo STL analisado com sucesso!');
+      
+      if (ext === 'stl') {
+        const tris = parseSTLBuffer(buffer);
+        const stats = analyzeTriangles(tris);
+        setStlData(stats);
+        toast.success('Arquivo STL analisado com sucesso!');
+      } else if (ext === 'gcode') {
+        const text = new TextDecoder().decode(buffer);
+        const { weightG, timeHours } = parseGCode(text);
+        if (weightG) setForm(f => ({ ...f, weightG: weightG.toString() }));
+        if (timeHours) {
+          const h = Math.floor(timeHours);
+          const m = Math.round((timeHours - h) * 60);
+          setForm(f => ({ ...f, h: h.toString(), m: m.toString() }));
+        }
+        toast.success('G-code processado!');
+      } else if (ext === '3mf') {
+        // Simple 3MF parsing - just listing files for now as it needs complex XML parsing
+        // But we can at least detect it and warn
+        toast.info('Arquivo 3MF detectado. Estimativa manual sugerida.');
+      }
     } catch (error) {
       console.error(error);
-      toast.error('Erro ao processar o arquivo STL.');
+      toast.error('Erro ao processar o arquivo.');
     } finally {
       setStlLoading(false);
     }
   };
+
 
   const calculate = () => {
     if (!form.weightG || (!form.h && !form.m)) {
@@ -107,7 +150,7 @@ function CalculatorPage() {
 
     const timeHours = (Number(form.h) || 0) + (Number(form.m) || 0) / 60;
     
-    const res = calculatePricing({
+    const inputData = {
       weightG: Number(form.weightG),
       timeHours,
       materialPricePerKg: Number(currentMat?.price_per_kg || 0),
@@ -119,9 +162,17 @@ function CalculatorPage() {
       marginPct: Number(form.marginPct),
       discountPct: Number(form.discountPct),
       packagingPrice: Number(form.packaging),
-      platformFeePct: Number(form.platformFee)
-    });
+      platformFeePct: Number(form.platformFee),
+      
+      // V2
+      quantity: Number(form.quantity),
+      taxPct: Number(form.taxPct),
+      setupMinutes: Number(form.setupMinutes),
+      postProcessingPriceHour: Number(form.postProcessingPriceHour),
+      postProcessingMinutes: Number(form.postProcessingMinutes)
+    };
 
+    const res = form.useV2 ? calculatePricingV2(inputData) : calculatePricing(inputData);
     setResult(res);
   };
 
@@ -158,7 +209,15 @@ function CalculatorPage() {
       discount_value: result.discountValue,
       final_price: result.finalPrice,
       profit: result.profit,
-      notes: form.notes
+      notes: form.notes,
+      
+      // V2 Fields
+      quantity: Number(form.quantity),
+      tax_pct: Number(form.taxPct),
+      tax_value: result.taxValue,
+      cost_post: result.costPost,
+      cost_setup: result.costSetup,
+      engine_version: form.useV2 ? 'v2' : 'v1'
     });
   };
 
@@ -184,20 +243,33 @@ function CalculatorPage() {
             <CardDescription className="text-gray-400">Preencha os dados abaixo para calcular o preço ideal.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-[#07071a] border border-[#22223a] rounded-xl mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#f97316]/10 rounded-lg">
+                  <CalculatorIcon className="text-[#f97316]" size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Motor de Cálculo V2</p>
+                  <p className="text-[10px] text-gray-500">Gross-up e custos avançados ativos</p>
+                </div>
+              </div>
+              <Switch checked={form.useV2} onCheckedChange={checked => setForm(f => ({ ...f, useV2: checked }))} />
+            </div>
+
             <div 
               className={cn(
                 "border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group",
                 stlData ? "border-green-500 bg-green-500/5" : "border-[#22223a] hover:border-[#f97316] bg-[#07071a]"
               )}
               onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); handleSTLFile(e.dataTransfer.files[0]); }}
+              onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
               onClick={() => fileInputRef.current?.click()}
             >
-              <input type="file" ref={fileInputRef} className="hidden" accept=".stl" onChange={e => { if (e.target.files?.[0]) handleSTLFile(e.target.files[0]); }} />
+              <input type="file" ref={fileInputRef} className="hidden" accept=".stl,.gcode,.3mf" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
               {stlLoading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="animate-spin text-[#f97316]" size={32} />
-                  <p>Analisando geometria...</p>
+                  <p>Analisando arquivo...</p>
                 </div>
               ) : stlData ? (
                 <div className="flex flex-col items-center gap-2">
@@ -211,8 +283,8 @@ function CalculatorPage() {
                     <Upload size={24} />
                   </div>
                   <div>
-                    <p className="font-medium text-white">Arraste o STL ou clique para selecionar</p>
-                    <p className="text-xs text-gray-500 mt-1">Peso e dimensões preenchidos automaticamente</p>
+                    <p className="font-medium text-white">Arraste STL, G-code ou 3MF</p>
+                    <p className="text-xs text-gray-500 mt-1">Estimativas automáticas baseadas em geometria</p>
                   </div>
                 </div>
               )}
@@ -245,14 +317,18 @@ function CalculatorPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 text-white">
+            <div className="grid grid-cols-3 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Cliente</Label>
-                <Input placeholder="Ex: João Silva" value={form.client} onChange={e => setForm({...form, client: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Input placeholder="Ex: João" value={form.client} onChange={e => setForm({...form, client: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
               <div className="space-y-2">
-                <Label>Peça/Projeto</Label>
-                <Input placeholder="Ex: Suporte GPU" value={form.project} onChange={e => setForm({...form, project: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Label>Projeto</Label>
+                <Input placeholder="Ex: Suporte" value={form.project} onChange={e => setForm({...form, project: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
+                <Input type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
             </div>
 
@@ -294,6 +370,27 @@ function CalculatorPage() {
                 <Input type="number" value={form.packaging} onChange={e => setForm({...form, packaging: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
             </div>
+
+            {form.useV2 && (
+              <div className="grid grid-cols-2 gap-4 text-white animate-fadeIn">
+                <div className="space-y-2">
+                  <Label>Imposto (%)</Label>
+                  <Input type="number" value={form.taxPct} onChange={e => setForm({...form, taxPct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Setup (min)</Label>
+                  <Input type="number" value={form.setupMinutes} onChange={e => setForm({...form, setupMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Custo Pós-Processo (R$/h)</Label>
+                  <Input type="number" value={form.postProcessingPriceHour} onChange={e => setForm({...form, postProcessingPriceHour: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tempo Pós (min)</Label>
+                  <Input type="number" value={form.postProcessingMinutes} onChange={e => setForm({...form, postProcessingMinutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                </div>
+              </div>
+            )}
 
             <Separator className="bg-[#22223a]" />
 
@@ -351,7 +448,7 @@ function CalculatorPage() {
             </div>
 
             <div className="flex gap-4 pt-4">
-               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '' }); setStlData(null); setResult(null); }}>
+               <Button variant="outline" className="flex-1 border-[#22223a] hover:bg-[#22223a] text-white" onClick={() => { setForm({ client: '', project: '', materialId: materials?.[0]?.id || '', weightG: '', h: '', m: '', failurePct: settings?.failure.toString() || '', marginPct: settings?.margin.toString() || '', discountPct: '0', packaging: settings?.packaging.toString() || '', platformFee: settings?.platform_fee.toString() || '', platformName: 'none', notes: '', quantity: '1', taxPct: settings?.tax_pct?.toString() || '0', setupMinutes: settings?.setup_minutes?.toString() || '15', postProcessingPriceHour: settings?.post_processing_price_hour?.toString() || '0', postProcessingMinutes: '0', useV2: settings?.engine_version === 'v2' }); setStlData(null); setResult(null); }}>
                  Limpar
                </Button>
                <Button className="flex-1 bg-[#f97316] hover:bg-[#d96314] gap-2 text-white" onClick={calculate}>
@@ -376,24 +473,39 @@ function CalculatorPage() {
                 <CostRow label="Energia Elétrica" value={result.costEnergy} />
                 <CostRow label="Mão de Obra" value={result.costLabor} />
                 <CostRow label="Desgaste Máquina" value={result.costMachine} />
-                <CostRow label="Embalagem" value={Number(form.packaging)} />
+                {form.useV2 && (
+                  <>
+                    <CostRow label="Setup Inicial" value={result.costSetup} />
+                    <CostRow label="Pós-Processo" value={result.costPost} />
+                  </>
+                )}
+                <CostRow label="Embalagem" value={Number(form.packaging) * Number(form.quantity)} />
                 <Separator className="bg-[#22223a]" />
                 <div className="flex justify-between items-center py-1">
-                  <span className="font-bold text-white">CUSTO TOTAL</span>
+                  <span className="font-bold text-white">CUSTO TOTAL ({form.quantity}x)</span>
                   <span className="font-bold text-white">R$ {result.subtotal.toFixed(2)}</span>
                 </div>
                 <CostRow label="Margem de Lucro" value={result.marginValue} color="text-green-500" />
+                {form.useV2 && <CostRow label="Imposto" value={result.taxValue} color="text-red-500" />}
                 <CostRow label="Taxa Marketplace" value={result.platformFeeValue} color="text-red-500" />
                 <CostRow label="Desconto" value={result.discountValue} color="text-red-500" />
               </div>
 
-              <div className="bg-[#f97316] p-6 rounded-2xl text-center space-y-1 shadow-lg shadow-[#f97316]/20">
-                <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Preço Final de Venda</p>
+              <div className={cn(
+                "p-6 rounded-2xl text-center space-y-1 shadow-lg transition-all",
+                result.isLoss ? "bg-red-500 shadow-red-500/20" : "bg-[#f97316] shadow-[#f97316]/20"
+              )}>
+                <p className="text-white/80 text-xs font-bold uppercase tracking-widest">
+                  {result.isLoss ? "⚠️ Prejuízo Detectado" : "Preço Final de Venda"}
+                </p>
                 <h2 className="text-5xl font-black text-white">R$ {result.finalPrice.toFixed(2)}</h2>
                 <div className="flex justify-center gap-4 pt-2">
-                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {((result.profit / result.finalPrice) * 100).toFixed(1)}%</span>
+                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {result.realMarginPct.toFixed(1)}%</span>
                    <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Lucro: R$ {result.profit.toFixed(2)}</span>
                 </div>
+                {result.isLoss && (
+                  <p className="text-[10px] text-white/90 font-bold mt-2">Ponto de Equilíbrio: R$ {result.breakEvenPrice.toFixed(2)}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-4">
