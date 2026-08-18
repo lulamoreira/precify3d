@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Shield, User, Loader2, Mail, Phone, Calendar } from 'lucide-react';
 
-export const Route = createFileRoute('/_authenticated/admin/usuarios' as any)({
+export const Route = createFileRoute('/_authenticated/admin/usuarios')({
   component: AdminUsersPage,
 });
 
