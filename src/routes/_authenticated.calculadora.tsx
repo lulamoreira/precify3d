@@ -111,7 +111,7 @@ function CalculatorPage() {
     }
   }, [settings, materials]);
 
-  const [volumeExtrudadoMm3, setVolumeExtrudadoMm3] = useState(0);
+  const [pesoSuporteG, setPesoSuporteG] = useState(0);
 
   useEffect(() => {
     if (stlData) {
