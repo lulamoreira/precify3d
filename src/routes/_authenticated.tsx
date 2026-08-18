@@ -1,14 +1,20 @@
 import { createFileRoute, Outlet, Link, useNavigate, redirect } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X, Users, FileText } from 'lucide-react';
+import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X, Users, FileText, CreditCard, Clock, Info, Zap, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useQuery } from '@tanstack/react-query';
+import { getQuotaStatus } from '@/lib/quota.functions';
+import { useServerFn } from '@tanstack/react-start';
+import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { differenceInDays } from 'date-fns';
 
 export const Route = createFileRoute('/_authenticated')({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     // No SSR, we only check authentication on the client side for now
     // to avoid redirection loops during OAuth callback.
     if (typeof window === 'undefined') {
@@ -31,6 +37,14 @@ function AuthenticatedLayout() {
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const navigate = useNavigate();
+  const getQuotaStatusFn = useServerFn(getQuotaStatus);
+
+  const { data: quota, refetch: refetchQuota } = useQuery({
+    queryKey: ['quotaStatus'],
+    queryFn: () => getQuotaStatusFn(),
+    enabled: !!user,
+    refetchInterval: 60000 // Refetch every minute
+  });
 
   useEffect(() => {
     const checkUser = async () => {
@@ -111,6 +125,7 @@ function AuthenticatedLayout() {
     { label: 'Orçamentos', icon: History, to: '/historico' as const },
     { label: 'Clientes', icon: Users, to: '/clientes' as const },
     { label: 'Configurações', icon: Settings, to: '/configuracoes' as const },
+    ...(profile?.role === 'admin' ? [{ label: 'Admin', icon: ShieldCheck, to: '/admin' as const }] : []),
   ];
 
   return (
@@ -122,11 +137,53 @@ function AuthenticatedLayout() {
               <span className="text-[#f97316]">⚡</span> Precify3D
             </h1>
           </div>
+          
+          {quota && !quota.unlimited && (
+            <div className="px-6 py-4 bg-[#1a1a35] mx-4 rounded-xl border border-[#22223a] mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Créditos de hoje</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info size={12} className="text-gray-500" />
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-[#111128] border-[#22223a] text-xs">
+                      <p>Renova à meia-noite (horário de Brasília)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex justify-between items-end mb-1">
+                <span className="text-lg font-bold text-white">{quota.used} <span className="text-xs text-gray-500 font-normal">de {quota.daily_quota}</span></span>
+                <span className="text-[10px] text-[#f97316] font-bold">{Math.round((quota.used / quota.daily_quota) * 100)}%</span>
+              </div>
+              <Progress value={(quota.used / quota.daily_quota) * 100} className="h-1 bg-[#07071a]" />
+              <Link to={"/planos" as any} className="mt-3 block text-center text-[10px] text-[#f97316] hover:underline font-bold uppercase tracking-tighter cursor-pointer">
+                Aumentar Limite
+              </Link>
+            </div>
+          )}
+
+          {quota?.status === 'trialing' && (
+            <div className="px-6 py-4 bg-[#f97316]/10 mx-4 rounded-xl border border-[#f97316]/20 mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap size={14} className="text-[#f97316]" />
+                <span className="text-[10px] font-bold text-[#f97316] uppercase">Trial Ilimitado</span>
+              </div>
+              <p className="text-[10px] text-gray-300">
+                Termina em {differenceInDays(new Date(quota.resets_at), new Date())} dias
+              </p>
+              <Link to={"/planos" as any} className="mt-2 block text-center text-[10px] text-[#f97316] hover:underline font-bold uppercase cursor-pointer">
+                Assinar agora
+              </Link>
+            </div>
+          )}
+
           <nav className="flex-1 px-4 space-y-2 mt-4">
             {navItems.map((item) => (
               <Link
                 key={item.to}
-                to={item.to}
+                to={item.to as any}
                 activeProps={{ className: 'bg-[#f97316] text-white' }}
                 inactiveProps={{ className: 'text-gray-400 hover:bg-[#22223a] hover:text-white' }}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium"
@@ -186,7 +243,7 @@ function AuthenticatedLayout() {
             {navItems.map((item) => (
               <Link
                 key={item.to}
-                to={item.to}
+                to={item.to as any}
                 activeProps={{ className: 'text-[#f97316]' }}
                 inactiveProps={{ className: 'text-gray-400' }}
                 className="flex flex-col items-center gap-1 p-2 transition-all"
