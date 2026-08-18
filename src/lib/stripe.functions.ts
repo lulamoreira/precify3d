@@ -58,6 +58,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
         headers: {
           'Authorization': `Bearer ${stripeKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
+          'allow_promotion_codes': 'true',
         },
         body: new URLSearchParams({
           'success_url': data.successUrl + '?session_id={CHECKOUT_SESSION_ID}',
