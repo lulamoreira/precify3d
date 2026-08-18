@@ -166,6 +166,7 @@ export type Database = {
           quantity: number
           quote_id: string
           stl_filename: string | null
+          stl_hash: string | null
           stl_path: string | null
           stl_size_bytes: number | null
           time_hours: number | null
@@ -187,6 +188,7 @@ export type Database = {
           quantity?: number
           quote_id: string
           stl_filename?: string | null
+          stl_hash?: string | null
           stl_path?: string | null
           stl_size_bytes?: number | null
           time_hours?: number | null
@@ -208,6 +210,7 @@ export type Database = {
           quantity?: number
           quote_id?: string
           stl_filename?: string | null
+          stl_hash?: string | null
           stl_path?: string | null
           stl_size_bytes?: number | null
           time_hours?: number | null
@@ -262,7 +265,9 @@ export type Database = {
           platform_name: string | null
           profit: number
           project: string | null
+          public_expires_at: string | null
           public_notes: string | null
+          public_token: string | null
           quantity: number | null
           quote_number: string | null
           shipping_price: number | null
@@ -281,6 +286,7 @@ export type Database = {
           title: string | null
           user_id: string
           valid_until: string | null
+          viewed_at: string | null
           weight_g: number
         }
         Insert: {
@@ -318,7 +324,9 @@ export type Database = {
           platform_name?: string | null
           profit: number
           project?: string | null
+          public_expires_at?: string | null
           public_notes?: string | null
+          public_token?: string | null
           quantity?: number | null
           quote_number?: string | null
           shipping_price?: number | null
@@ -337,6 +345,7 @@ export type Database = {
           title?: string | null
           user_id: string
           valid_until?: string | null
+          viewed_at?: string | null
           weight_g: number
         }
         Update: {
@@ -374,7 +383,9 @@ export type Database = {
           platform_name?: string | null
           profit?: number
           project?: string | null
+          public_expires_at?: string | null
           public_notes?: string | null
+          public_token?: string | null
           quantity?: number | null
           quote_number?: string | null
           shipping_price?: number | null
@@ -393,6 +404,7 @@ export type Database = {
           title?: string | null
           user_id?: string
           valid_until?: string | null
+          viewed_at?: string | null
           weight_g?: number
         }
         Relationships: [
@@ -421,6 +433,7 @@ export type Database = {
           platform_fee: number
           post_processing_price_hour: number | null
           setup_minutes: number | null
+          store_files: boolean | null
           tax_pct: number | null
           time_calibration: number | null
           updated_at: string
@@ -444,6 +457,7 @@ export type Database = {
           platform_fee?: number
           post_processing_price_hour?: number | null
           setup_minutes?: number | null
+          store_files?: boolean | null
           tax_pct?: number | null
           time_calibration?: number | null
           updated_at?: string
@@ -467,6 +481,7 @@ export type Database = {
           platform_fee?: number
           post_processing_price_hour?: number | null
           setup_minutes?: number | null
+          store_files?: boolean | null
           tax_pct?: number | null
           time_calibration?: number | null
           updated_at?: string
@@ -482,6 +497,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_public_quote: { Args: { _token: string }; Returns: Json }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       next_quote_number: { Args: never; Returns: string }
     }

@@ -50,7 +50,8 @@ function SettingsPage() {
         nozzle_width: settings.nozzle_width?.toString() || '0.4',
         walls: settings.walls?.toString() || '3',
         volumetric_rate: settings.volumetric_rate?.toString() || '8.0',
-        time_calibration: settings.time_calibration?.toString() || '1.0'
+        time_calibration: settings.time_calibration?.toString() || '1.0',
+        store_files: settings.store_files ?? true
       });
     }
   }, [settings]);
@@ -204,6 +205,13 @@ function SettingsPage() {
                   <div className="space-y-2">
                     <Label>Tempo de Setup Fixo (min)</Label>
                     <Input type="number" value={form.setup_minutes} onChange={e => setForm({...form, setup_minutes: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-[#07071a] border border-[#22223a] rounded-xl">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Guardar arquivos 3D na nuvem</Label>
+                      <p className="text-[10px] text-gray-500">Faz upload automático de STL/G-code para o servidor</p>
+                    </div>
+                    <Switch checked={form.store_files} onCheckedChange={checked => setForm({...form, store_files: checked})} />
                   </div>
                 </CardContent>
               </Card>

@@ -80,7 +80,7 @@ export const getQuotes = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("quotes")
-      .select("*")
+      .select("*, quote_items(*)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     
