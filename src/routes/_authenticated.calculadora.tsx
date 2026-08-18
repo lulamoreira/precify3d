@@ -520,10 +520,44 @@ function CalculatorPage() {
                 <MiniStat label="L. Líquido" value={`R$ ${result.profit.toFixed(2)}`} accent />
               </div>
 
-              <Button className="w-full bg-[#111128] border border-[#f97316] text-[#f97316] hover:bg-[#f97316] hover:text-white gap-2 h-12 rounded-xl" onClick={handleSave} disabled={mutation.isPending}>
-                {mutation.isPending ? <Loader2 className="animate-spin" /> : <Package size={20} />}
-                💾 Salvar Orçamento
-              </Button>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    variant="outline" 
+                    className="border-[#22223a] text-gray-400 hover:text-white gap-2 h-12 rounded-xl"
+                    onClick={() => handleSave('simulacao')}
+                    disabled={mutation.isPending}
+                  >
+                    <FileText size={18} />
+                    Salvar Simulação
+                  </Button>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="w-full">
+                          <Button 
+                            className="w-full bg-[#f97316] hover:bg-[#d96314] text-white gap-2 h-12 rounded-xl"
+                            onClick={() => handleSave('orcamento')}
+                            disabled={mutation.isPending || !form.client}
+                          >
+                            <Save size={18} />
+                            Salvar Orçamento
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {!form.client && (
+                        <TooltipContent className="bg-[#111128] border-[#22223a] text-white">
+                          <p>Selecione um cliente para gerar um orçamento</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <p className="text-[10px] text-gray-500 text-center italic">
+                  Simulações não entram no faturamento, orçamentos sim.
+                </p>
+              </div>
             </CardContent>
           </Card>
         ) : (
