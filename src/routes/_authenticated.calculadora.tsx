@@ -265,20 +265,33 @@ function CalculatorPage() {
             <CardDescription className="text-gray-400">Preencha os dados abaixo para calcular o preço ideal.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-[#07071a] border border-[#22223a] rounded-xl mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#f97316]/10 rounded-lg">
+                  <CalculatorIcon className="text-[#f97316]" size={20} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">Motor de Cálculo V2</p>
+                  <p className="text-[10px] text-gray-500">Gross-up e custos avançados ativos</p>
+                </div>
+              </div>
+              <Switch checked={form.useV2} onCheckedChange={checked => setForm(f => ({ ...f, useV2: checked }))} />
+            </div>
+
             <div 
               className={cn(
                 "border-2 border-dashed rounded-2xl p-8 text-center transition-all cursor-pointer group",
                 stlData ? "border-green-500 bg-green-500/5" : "border-[#22223a] hover:border-[#f97316] bg-[#07071a]"
               )}
               onDragOver={e => e.preventDefault()}
-              onDrop={e => { e.preventDefault(); handleSTLFile(e.dataTransfer.files[0]); }}
+              onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
               onClick={() => fileInputRef.current?.click()}
             >
-              <input type="file" ref={fileInputRef} className="hidden" accept=".stl" onChange={e => { if (e.target.files?.[0]) handleSTLFile(e.target.files[0]); }} />
+              <input type="file" ref={fileInputRef} className="hidden" accept=".stl,.gcode,.3mf" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
               {stlLoading ? (
                 <div className="flex flex-col items-center gap-2">
                   <Loader2 className="animate-spin text-[#f97316]" size={32} />
-                  <p>Analisando geometria...</p>
+                  <p>Analisando arquivo...</p>
                 </div>
               ) : stlData ? (
                 <div className="flex flex-col items-center gap-2">
@@ -292,8 +305,8 @@ function CalculatorPage() {
                     <Upload size={24} />
                   </div>
                   <div>
-                    <p className="font-medium text-white">Arraste o STL ou clique para selecionar</p>
-                    <p className="text-xs text-gray-500 mt-1">Peso e dimensões preenchidos automaticamente</p>
+                    <p className="font-medium text-white">Arraste STL, G-code ou 3MF</p>
+                    <p className="text-xs text-gray-500 mt-1">Estimativas automáticas baseadas em geometria</p>
                   </div>
                 </div>
               )}
