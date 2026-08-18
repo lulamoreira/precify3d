@@ -621,7 +621,7 @@ function CalculatorPage() {
                     disabled={mutation.isPending}
                   >
                     <FileText size={18} />
-                    Salvar Simulação
+                    Salvar como Simulação
                   </Button>
 
                   <TooltipProvider>
@@ -634,7 +634,7 @@ function CalculatorPage() {
                             disabled={mutation.isPending || (!form.clientId && !form.client)}
                           >
                             <Save size={18} />
-                            Salvar Orçamento
+                            Gerar Orçamento Profissional
                           </Button>
                         </div>
                       </TooltipTrigger>
