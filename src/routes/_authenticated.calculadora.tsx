@@ -784,6 +784,22 @@ function CalculatorPage() {
 
             {form.useV2 && (
               <div className="grid grid-cols-2 gap-4 text-white animate-fadeIn">
+                {batchMode && parseInt(form.totalPieces) > 1 && (
+                  <div className="col-span-2 space-y-2 border-b border-[#22223a] pb-4 mb-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Tempo de 1 PEÇA SOZINHA (Opcional)</Label>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input type="number" placeholder="h" value={form.singleTimeH} onChange={e => setForm(f => ({ ...f, singleTimeH: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
+                      <Input type="number" placeholder="min" value={form.singleTimeM} onChange={e => setForm(f => ({ ...f, singleTimeM: e.target.value }))} className="bg-[#07071a] border-[#22223a]" />
+                    </div>
+                    <p className="text-[9px] text-gray-500">
+                      Informando o tempo de uma peça sozinha, o cálculo da última placa fica exato.
+                    </p>
+                  </div>
+                )}
+
+              <div className="grid grid-cols-2 gap-4 text-white animate-fadeIn">
                 <div className="space-y-2">
                   <Label>Imposto (%)</Label>
                   <Input type="number" value={form.taxPct} onChange={e => setForm({...form, taxPct: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
