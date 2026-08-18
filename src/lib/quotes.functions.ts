@@ -59,11 +59,12 @@ export const deleteClient = createServerFn({ method: "POST" })
     return { success: true };
   });
 
-export const getFullQuote = createServerFn({ method: "GET" })
+export const getQuoteDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((id: string) => id)
   .handler(async ({ data: id, context }) => {
     const { supabase, userId } = context;
+    
     const { data: quote, error: qError } = await supabase
       .from("quotes")
       .select("*, clients(*)")
@@ -82,7 +83,19 @@ export const getFullQuote = createServerFn({ method: "GET" })
     
     if (iError) throw iError;
 
-    return { ...quote, items };
+    const { data: profile, error: pError } = await supabase
+      .from("profiles")
+      .select("company_name, company_logo_path, brand_color, email, phone, full_name, address_number, address_complement, city, cep")
+      .eq("id", userId)
+      .single();
+    
+    if (pError) throw pError;
+
+    return { 
+      quote, 
+      items, 
+      branding: profile 
+    };
   });
 
 export const saveFullQuote = createServerFn({ method: "POST" })
@@ -94,7 +107,6 @@ export const saveFullQuote = createServerFn({ method: "POST" })
     
     let quoteId = quoteData.id;
 
-    // Get next quote number if it's a new quote
     if (!quoteId) {
       const { data: nextNumber, error: nError } = await supabase.rpc('next_quote_number');
       if (nError) throw nError;
@@ -110,19 +122,17 @@ export const saveFullQuote = createServerFn({ method: "POST" })
     if (qError) throw qError;
     quoteId = quote.id;
 
-    // Delete old items if updating to maintain position and clean state
     const { error: dError } = await supabase
       .from("quote_items")
       .delete()
       .eq("quote_id", quoteId);
     if (dError) throw dError;
 
-    // Insert new items
     if (items && items.length > 0) {
       const { error: iError } = await supabase
         .from("quote_items")
         .insert(items.map((item: any, index: number) => {
-          const { id, created_at, ...rest } = item; // remove DB fields if present
+          const { id, created_at, ...rest } = item;
           return {
             ...rest,
             quote_id: quoteId,
