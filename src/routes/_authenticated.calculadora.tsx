@@ -585,6 +585,72 @@ function CalculatorPage() {
               </div>
             </div>
 
+            {form.useV2 && parseInt(form.quantity) > 1 && (
+              <div className="p-4 bg-[#07071a] border border-[#f97316]/30 rounded-xl space-y-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package size={18} className="text-[#f97316]" />
+                    <Label className="text-sm font-semibold">Produção em Lote</Label>
+                  </div>
+                  <Switch checked={batchMode} onCheckedChange={setBatchMode} />
+                </div>
+
+                {batchMode && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-gray-400">Como imprime</Label>
+                        <Select value={batchPrintMode} onValueChange={(v: any) => setBatchPrintMode(v)}>
+                          <SelectTrigger className="bg-[#111128] border-[#22223a] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                            <SelectItem value="simultaneo">Simultâneo (todas juntas)</SelectItem>
+                            <SelectItem value="sequencial">Sequencial (uma por vez)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-gray-400">Peças por mesa</Label>
+                        <div className="flex gap-1">
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            value={partsPerPlate} 
+                            onChange={e => setPartsPerPlate(Math.max(1, parseInt(e.target.value) || 1))} 
+                            className="bg-[#111128] border-[#22223a] h-8 text-xs"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-[9px] px-2 bg-[#22223a] border-[#33334d]"
+                            onClick={() => {
+                              if (stlData && settings) {
+                                const cap = plateCapacity({
+                                  dimX: stlData.dimX,
+                                  dimY: stlData.dimY,
+                                  dimZ: stlData.dimZ,
+                                  bedX: Number((settings as any).bed_x) || 256,
+                                  bedY: Number((settings as any).bed_y) || 256,
+                                  bedZ: Number((settings as any).bed_z) || 256,
+                                  margin: Number((settings as any).plate_margin) || 5,
+                                  gap: Number((settings as any).part_gap) || 8
+                                });
+                                setPartsPerPlate(cap.capacidade || 1);
+                              }
+                            }}
+                          >
+                            IDEAL
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+
             <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Material</Label>
