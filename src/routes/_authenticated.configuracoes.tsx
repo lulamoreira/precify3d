@@ -208,9 +208,27 @@ function SettingsPage() {
                       } else {
                         const preset = presets?.find((p: any) => p.id === val);
                         if (preset) {
-                          setPendingPreset(preset);
-                          setShowPresetAlert(true);
+                          const currentWatt = Number(form.watt);
+                          const isVeryDifferent = Math.abs(currentWatt - preset.avg_watts) > (preset.avg_watts * 0.5);
+                          
+                          if (isVeryDifferent || preset.is_estimated || preset.multicolor || (preset.tech === 'fdm' && (preset.bed_x !== form.bed_x || preset.bed_y !== form.bed_y))) {
+                            setPendingPreset(preset);
+                            setShowPresetAlert(true);
+                          } else {
+                            // Apply directly if not controversial
+                            setForm({
+                              ...form,
+                              printer_preset_id: preset.id,
+                              watt: preset.avg_watts.toString(),
+                              ...(preset.tech === 'fdm' ? {
+                                bed_x: preset.bed_x,
+                                bed_y: preset.bed_y,
+                                bed_z: preset.bed_z
+                              } : {})
+                            });
+                          }
                         }
+
                       }
                     }}>
                       <SelectTrigger className="bg-[#07071a] border-[#22223a]">
@@ -236,9 +254,13 @@ function SettingsPage() {
                     <Input type="number" value={form.watt} onChange={e => setForm({...form, watt: e.target.value, printer_preset_id: null})} className="bg-[#07071a] border-[#22223a]" />
                   </div>
 
-
+                  <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-[10px] text-gray-400 flex gap-2">
+                    <Info size={14} className="text-blue-500 shrink-0" />
+                    <p>O número mais exato está na sua conta de luz: divida o valor total da fatura pela quantidade de kWh consumidos. Isso já inclui impostos, bandeira e taxa de iluminação pública.</p>
+                  </div>
                 </CardContent>
               </Card>
+
 
               <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden">
                 <CardHeader>
