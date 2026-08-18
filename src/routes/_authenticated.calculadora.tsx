@@ -78,6 +78,11 @@ function CalculatorPage() {
     hash: string | null;
   } | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [batchMode, setBatchMode] = useState(true);
+  const [batchPrintMode, setBatchPrintMode] = useState<'simultaneo' | 'sequencial'>('simultaneo');
+  const [partsPerPlate, setPartsPerPlate] = useState<number>(1);
+  const [volumeExtrudadoMm3, setVolumeExtrudadoMm3] = useState(0);
+  const [batchResult, setBatchResult] = useState<any>(null);
 
   const [stlData, setStlData] = useState<STLData | null>(null);
   const [stlLoading, setStlLoading] = useState(false);
