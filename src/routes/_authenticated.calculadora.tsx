@@ -1142,9 +1142,12 @@ function CalculatorPage() {
                 )}>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger>
-                        {batchResult.exato ? 'EXATO' : 'APROXIMADO'}
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">
+                          {batchResult.exato ? 'EXATO' : 'APROXIMADO'}
+                        </span>
                       </TooltipTrigger>
+
                       {!batchResult.exato && (
                         <TooltipContent className="bg-[#111128] border-[#22223a] text-white text-[10px] max-w-xs p-2">
                           Assumindo {((settings as any)?.fixed_time_share * 100 || 15)}% de tempo fixo — informe o tempo de 1 peça para ficar exato.
