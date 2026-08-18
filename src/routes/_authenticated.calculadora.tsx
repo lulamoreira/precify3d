@@ -104,11 +104,12 @@ function CalculatorPage() {
     }
   }, [settings, materials]);
 
+  const [volumeExtrudadoMm3, setVolumeExtrudadoMm3] = useState(0);
+
   useEffect(() => {
     if (stlData) {
-      let weight = 0;
       if (form.useV2 && settings) {
-        weight = estimateWeightV2(
+        const weightObj = estimateWeightV2(
           stlData, 
           density, 
           infill, 
@@ -117,12 +118,21 @@ function CalculatorPage() {
           settings.nozzle_width || 0.4
         );
         
-        const time = estimateTimeHours(stlData.volCm3, settings.volumetric_rate || 8, settings.time_calibration || 1.0);
+        setVolumeExtrudadoMm3(weightObj.volumeExtrudadoMm3);
+        
+        const time = estimateTimeHours({
+          volumeExtrudadoMm3: weightObj.volumeExtrudadoMm3,
+          dimZ: stlData.dimZ,
+          layerHeight: settings.layer_height || 0.2,
+          volumetricRate: settings.volumetric_rate || 8,
+          calibration: settings.time_calibration || 1.0
+        });
+        
         const h = Math.floor(time);
         const m = Math.round((time - h) * 60);
-        setForm(f => ({ ...f, weightG: weight.toString(), h: h.toString(), m: m.toString() }));
+        setForm(f => ({ ...f, weightG: weightObj.pesoG.toString(), h: h.toString(), m: m.toString() }));
       } else {
-        weight = calcWeightFromSTL(stlData.volCm3, density, infill);
+        const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
         setForm(f => ({ ...f, weightG: weight.toString() }));
       }
     }
