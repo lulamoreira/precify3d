@@ -62,15 +62,15 @@ function SettingsPage() {
         volumetric_rate: settings.volumetric_rate?.toString() || '8.0',
         time_calibration: settings.time_calibration?.toString() || '1.0',
         store_files: settings.store_files ?? true,
-        bed_x: settings.bed_x || 256,
-        bed_y: settings.bed_y || 256,
-        bed_z: settings.bed_z || 256,
-        plate_margin: settings.plate_margin || 5,
-        part_gap: settings.part_gap || 8,
-        batch_travel_seconds: settings.batch_travel_seconds || 2,
-        plate_waste_g: settings.plate_waste_g || 5,
-        batch_kills_plate: settings.batch_kills_plate ?? true,
-        batch_loss_factor: settings.batch_loss_factor || 0.6
+        bed_x: (settings as any).bed_x || 256,
+        bed_y: (settings as any).bed_y || 256,
+        bed_z: (settings as any).bed_z || 256,
+        plate_margin: (settings as any).plate_margin || 5,
+        part_gap: (settings as any).part_gap || 8,
+        batch_travel_seconds: (settings as any).batch_travel_seconds || 2,
+        plate_waste_g: (settings as any).plate_waste_g || 5,
+        batch_kills_plate: (settings as any).batch_kills_plate ?? true,
+        batch_loss_factor: (settings as any).batch_loss_factor || 0.6
       });
     }
   }, [settings]);
