@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
-export const Route = createFileRoute('/_authenticated/admin/tarifas' as any)({
+export const Route = createFileRoute('/_authenticated/admin/tarifas')({
   component: AdminTariffsPage,
 });
 
