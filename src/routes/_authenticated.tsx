@@ -159,7 +159,7 @@ function AuthenticatedLayout() {
           </div>
         </aside>
       )}
-      <main className={cn("flex-1 flex flex-col", !isMobile && "pl-64")}>
+      <main className={cn("flex-1 flex flex-col min-h-screen", !isMobile && "pl-64")}>
         {isMobile && (
           <header className="bg-[#111128] border-b border-[#22223a] p-4 flex justify-between items-center sticky top-0 z-50">
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
