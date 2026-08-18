@@ -727,9 +727,26 @@ function CalculatorPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Peso (g)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Peso (g)</Label>
+                  <div className="flex bg-[#07071a] border border-[#22223a] rounded-lg p-0.5 scale-75 origin-right">
+                    <button 
+                      className={cn("px-2 py-0.5 rounded text-[9px] font-bold transition-all", form.weightInputMode === 'peca' ? "bg-[#f97316] text-white" : "text-gray-500")}
+                      onClick={() => setForm(f => ({ ...f, weightInputMode: 'peca' }))}
+                    >
+                      PEÇA
+                    </button>
+                    <button 
+                      className={cn("px-2 py-0.5 rounded text-[9px] font-bold transition-all", form.weightInputMode === 'placa' ? "bg-[#f97316] text-white" : "text-gray-500")}
+                      onClick={() => setForm(f => ({ ...f, weightInputMode: 'placa' }))}
+                    >
+                      PLACA
+                    </button>
+                  </div>
+                </div>
                 <Input type="number" value={form.weightG} onChange={e => setForm({...form, weightG: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
+
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-white">
