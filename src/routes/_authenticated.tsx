@@ -109,7 +109,7 @@ function AuthenticatedLayout() {
     { label: 'Dashboard', icon: LayoutDashboard, to: '/' as const },
     { label: 'Calculadora', icon: Calculator, to: '/calculadora' as const },
     { label: 'Orçamentos', icon: FileText, to: '/historico' as const },
-    { label: 'Clientes', icon: UserPlus, to: '/clientes' as const },
+    { label: 'Clientes', icon: Users, to: '/clientes' as const },
     { label: 'Configurações', icon: Settings, to: '/configuracoes' as const },
   ];
 
