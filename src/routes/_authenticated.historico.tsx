@@ -353,14 +353,26 @@ function HistoryPage() {
                     R$ {lucroVenda(quote).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-gray-500 hover:text-red-500 hover:bg-red-500/10"
-                      onClick={() => { if(confirm('Excluir este orçamento?')) deleteMutation.mutate(quote.id); }}
-                    >
-                      <Trash2 size={18} />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-500 hover:text-[#f97316] hover:bg-[#f97316]/10"
+                        asChild
+                      >
+                        <Link to="/orcamentos/$id" params={{ id: quote.id }}>
+                          <Download size={18} />
+                        </Link>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="text-gray-500 hover:text-red-500 hover:bg-red-500/10"
+                        onClick={() => { if(confirm('Excluir este orçamento?')) deleteMutation.mutate(quote.id); }}
+                      >
+                        <Trash2 size={18} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
