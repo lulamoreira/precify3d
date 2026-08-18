@@ -170,8 +170,9 @@ function CalculatorPage() {
         });
         
         if (cap.fits) {
-          setPartsPerPlate(prev => prev > cap.capacidade ? cap.capacidade : (prev || cap.capacidade));
+          setForm(f => ({ ...f, piecesPerPlate: cap.capacidade.toString() }));
         }
+
       } else {
         const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
         setForm(f => ({ ...f, weightG: weight.toString() }));
