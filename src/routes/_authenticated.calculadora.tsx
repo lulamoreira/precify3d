@@ -1099,18 +1099,35 @@ function CalculatorPage() {
       </div>
 
       <div className="space-y-6">
-        {form.useV2 && parseInt(form.quantity) > 1 && batchMode && batchResult && (
+        {form.useV2 && parseInt(form.totalPieces) > 1 && batchResult && (
           <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-lg">Análise de Lote</CardTitle>
+                  <CardTitle className="text-lg">Análise de Produção em Lote</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Produção otimizada para {form.quantity} unidades
+                    {batchResult.totalPieces} peças ÷ {batchResult.piecesPerPlate} por placa = {batchResult.placasCheias} {batchResult.placasCheias === 1 ? 'placa cheia' : 'placas cheias'}
+                    {batchResult.resto > 0 ? ` + 1 placa com ${batchResult.resto} peças` : ''}
                   </CardDescription>
                 </div>
-                <div className="bg-[#f97316]/20 text-[#f97316] px-3 py-1 rounded-full text-xs font-bold border border-[#f97316]/30">
-                  {batchResult.totalPlates} {batchResult.totalPlates === 1 ? 'mesa' : 'mesas'}
+                <div className={cn(
+                  "px-3 py-1 rounded-full text-[10px] font-bold border",
+                  batchResult.exato 
+                    ? "bg-green-500/20 text-green-500 border-green-500/30" 
+                    : "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                )}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        {batchResult.exato ? 'EXATO' : 'APROXIMADO'}
+                      </TooltipTrigger>
+                      {!batchResult.exato && (
+                        <TooltipContent className="bg-[#111128] border-[#22223a] text-white text-[10px] max-w-xs p-2">
+                          Assumindo {((settings as any)?.fixed_time_share * 100 || 15)}% de tempo fixo — informe o tempo de 1 peça para ficar exato.
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
             </CardHeader>
@@ -1127,15 +1144,16 @@ function CalculatorPage() {
                   <p className="text-[10px] text-gray-400">Solo: R$ {(result?.finalPrice || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-[#07071a] p-4 rounded-xl border border-[#22223a] space-y-1">
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Risco de Perda</p>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Risco por Placa</p>
                   {(() => {
                     const risk = (plateRisk({
-                      n: partsPerPlate,
+                      n: batchResult.piecesPerPlate,
                       failurePct: Number(form.failurePct) || 0,
                       modo: batchPrintMode,
                       killsPlate: (settings as any)?.batch_kills_plate ?? true,
                       lossFactor: (settings as any)?.batch_loss_factor || 0.6
                     }).pMesa * 100);
+
                     
                     let color = "text-green-500";
                     if (risk > 35) color = "text-red-500";
