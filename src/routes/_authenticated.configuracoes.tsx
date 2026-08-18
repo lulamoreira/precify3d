@@ -168,7 +168,7 @@ function SettingsPage() {
                       if (val === 'manual') {
                         setForm({...form, energy_uf: null});
                       } else {
-                        const tariff = tariffs?.find(t => t.uf === val);
+                        const tariff = tariffs?.find((t: any) => t.uf === val);
                         if (tariff) setForm({...form, energy_uf: val, kwh: tariff.price_kwh.toString()});
                       }
                     }}>
@@ -179,7 +179,7 @@ function SettingsPage() {
                         <SelectItem value="manual">Digitar manualmente</SelectItem>
                         <SelectGroup>
                           <SelectLabel>Estados</SelectLabel>
-                          {tariffs?.map(t => <SelectItem key={t.uf} value={t.uf}>{t.state_name} ({t.uf})</SelectItem>)}
+                          {tariffs?.map((t: any) => <SelectItem key={t.uf} value={t.uf}>{t.state_name} ({t.uf})</SelectItem>)}
                         </SelectGroup>
                       </SelectContent>
                     </Select>
@@ -195,7 +195,7 @@ function SettingsPage() {
                       if (val === 'manual') {
                         setForm({...form, printer_preset_id: null});
                       } else {
-                        const preset = presets?.find(p => p.id === val);
+                        const preset = presets?.find((p: any) => p.id === val);
                         if (preset) {
                           setPendingPreset(preset);
                           setShowPresetAlert(true);
@@ -207,10 +207,10 @@ function SettingsPage() {
                       </SelectTrigger>
                       <SelectContent className="bg-[#111128] border-[#22223a] text-white">
                         <SelectItem value="manual">Outra / Digitar manualmente</SelectItem>
-                        {Array.from(new Set(presets?.map(p => p.brand))).map(brand => (
+                        {Array.from(new Set(presets?.map((p: any) => p.brand) || [])).map((brand: any) => (
                           <SelectGroup key={brand}>
                             <SelectLabel>{brand}</SelectLabel>
-                            {presets?.filter(p => p.brand === brand).map(p => (
+                            {presets?.filter((p: any) => p.brand === brand).map((p: any) => (
                               <SelectItem key={p.id} value={p.id}>
                                 {p.model} {p.is_estimated && <Badge variant="outline" className="ml-2 bg-amber-500/20 text-amber-500 border-amber-500/30 text-[9px]">estimado</Badge>}
                               </SelectItem>
@@ -224,6 +224,7 @@ function SettingsPage() {
                     <Label>Potência da Impressora (W)</Label>
                     <Input type="number" value={form.watt} onChange={e => setForm({...form, watt: e.target.value, printer_preset_id: null})} className="bg-[#07071a] border-[#22223a]" />
                   </div>
+
 
                 </CardContent>
               </Card>
