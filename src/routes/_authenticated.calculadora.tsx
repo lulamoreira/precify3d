@@ -147,6 +147,7 @@ function CalculatorPage() {
         const m = Math.round((time - h) * 60);
         setForm(f => ({ ...f, weightG: weightObj.pesoG.toString(), h: h.toString(), m: m.toString() }));
 
+
         // Lógica de Capacidade da Mesa
         const cap = plateCapacity({
           dimX: stlData.dimX,
