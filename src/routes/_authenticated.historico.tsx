@@ -6,13 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, ClipboardList, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Download, Trash2, DollarSign, TrendingUp, ShoppingBag, ClipboardList, Loader2, MoreVertical, CheckCircle2, XCircle, Clock, Undo2, Filter } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useServerFn } from '@tanstack/react-start';
-import { isVenda, valorVenda, lucroVenda, getStatusLabel, getStatusColor } from '@/lib/quote-status';
+import { isVenda, valorVenda, lucroVenda, getStatusLabel, getStatusColor, STATUS_VENDA, STATUS_ABERTO, STATUS_MORTO, STATUS_NEUTRO, type QuoteStatus } from '@/lib/quote-status';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 export const Route = createFileRoute('/_authenticated/historico')({
@@ -23,6 +28,12 @@ export const Route = createFileRoute('/_authenticated/historico')({
 function HistoryPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('todos');
+  const [saleModal, setSaleModal] = useState<{ open: boolean, quote: any | null }>({ open: false, quote: null });
+  const [lostModal, setLostModal] = useState<{ open: boolean, quote: any | null }>({ open: false, quote: null });
+  const [saleForm, setSaleForm] = useState({ price: '', date: format(new Date(), 'yyyy-MM-dd') });
+  const [lostReason, setLostReason] = useState('preco');
+  const [lastAction, setLastAction] = useState<{ quoteId: string, oldStatus: string } | null>(null);
   
   const { data: quotes, isLoading } = useQuery({
     queryKey: ['quotes'],
@@ -41,11 +52,101 @@ function HistoryPage() {
 
 
 
-  const filteredQuotes = quotes?.filter(q => 
-    q.client?.toLowerCase().includes(search.toLowerCase()) ||
-    q.project?.toLowerCase().includes(search.toLowerCase()) ||
-    q.material_name?.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  const updateStatusFn = useServerFn(updateQuoteStatus);
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => updateStatusFn({ data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+    },
+    onError: (err: any) => toast.error('Erro ao atualizar status: ' + err.message)
+  });
+
+  const handleStatusChange = async (quote: any, newStatus: string) => {
+    if (newStatus === 'aprovado' || newStatus === 'vendido') {
+      setSaleModal({ open: true, quote });
+      setSaleForm({ price: quote.final_price.toString(), date: format(new Date(), 'yyyy-MM-dd') });
+      return;
+    }
+    if (newStatus === 'recusado') {
+      setLostModal({ open: true, quote });
+      return;
+    }
+
+    setLastAction({ quoteId: quote.id, oldStatus: quote.status });
+    updateMutation.mutate({ id: quote.id, status: newStatus });
+    
+    toast('Status atualizado', {
+      action: {
+        label: 'Desfazer',
+        onClick: () => {
+          updateMutation.mutate({ id: quote.id, status: quote.status });
+        }
+      },
+      duration: 10000
+    });
+  };
+
+  const confirmSale = () => {
+    if (!saleModal.quote) return;
+    const sold_price = Number(saleForm.price);
+    const q = saleModal.quote;
+    
+    // sold_profit = sold_price - sold_price * (platform_fee + tax_pct)/100 - custoDireto
+    const totalFeesPct = (Number(q.platform_fee) + Number(q.tax_pct || 0)) / 100;
+    const directCost = Number(q.cost_material) + Number(q.cost_energy) + Number(q.cost_labor) + Number(q.cost_machine) + 
+                       Number(q.packaging) + Number(q.cost_support || 0) + Number(q.cost_post || 0) + Number(q.cost_setup || 0);
+    
+    const sold_profit = sold_price - (sold_price * totalFeesPct) - directCost;
+
+    if (sold_profit < 0) {
+      if (!confirm(`Essa negociação deu prejuízo de R$ ${Math.abs(sold_profit).toFixed(2)}. Deseja salvar mesmo assim?`)) return;
+    }
+
+    updateMutation.mutate({ 
+      id: q.id, 
+      status: 'aprovado', 
+      sold_price, 
+      sold_profit, 
+      sold_at: new Date(saleForm.date).toISOString() 
+    });
+    setSaleModal({ open: false, quote: null });
+    toast.success('Venda confirmada!');
+  };
+
+  const confirmLost = () => {
+    if (!lostModal.quote) return;
+    updateMutation.mutate({ 
+      id: lostModal.quote.id, 
+      status: 'recusado', 
+      lost_reason: lostReason 
+    });
+    setLostModal({ open: false, quote: null });
+    toast.success('Motivo registrado.');
+  };
+
+  const filteredQuotes = useMemo(() => {
+    let result = quotes || [];
+    
+    if (statusFilter !== 'todos') {
+      if (statusFilter === 'simulacoes') result = result.filter(q => q.kind === 'simulacao');
+      else if (statusFilter === 'aberto') result = result.filter(q => STATUS_ABERTO.includes(q.status));
+      else if (statusFilter === 'vendas') result = result.filter(q => STATUS_VENDA.includes(q.status));
+      else if (statusFilter === 'perdidos') result = result.filter(q => STATUS_MORTO.includes(q.status));
+    }
+
+    if (search) {
+      result = result.filter(q => 
+        q.client?.toLowerCase().includes(search.toLowerCase()) ||
+        q.project?.toLowerCase().includes(search.toLowerCase()) ||
+        q.material_name?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    
+    return result;
+  }, [quotes, search, statusFilter]);
+
+  const unclassifiedCount = quotes?.filter(q => q.status === 'nao_classificado').length || 0;
+  const [showUnclassifiedBanner, setShowUnclassifiedBanner] = useState(true);
 
   const stats = {
     vendasRealizadas: quotes?.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) || 0,
