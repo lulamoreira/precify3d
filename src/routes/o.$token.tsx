@@ -165,12 +165,15 @@ function PublicQuoteViewPage() {
                         <p className="font-bold text-slate-800">{item.name}</p>
                         <p className="text-xs text-slate-500 italic">{item.description}</p>
                       </td>
-                      <td className="py-4 px-2 text-center font-medium">{item.quantity}</td>
-                      <td className="py-4 px-2 text-right font-medium text-slate-600">R$ {item.unit_price.toFixed(2)}</td>
+                      <td className="py-4 px-2 text-center font-medium">
+                        {item.total_pieces || item.quantity}
+                      </td>
+                      <td className="py-4 px-2 text-right font-medium text-slate-600">R$ {(item.unit_price || (item.total_price / (item.total_pieces || item.quantity))).toFixed(2)}</td>
                       <td className="py-4 px-2 text-right font-bold text-slate-800">R$ {item.total_price.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
+
               </table>
             </div>
 
