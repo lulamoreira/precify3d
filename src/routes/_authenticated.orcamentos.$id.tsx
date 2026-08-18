@@ -2,9 +2,8 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useServerFn } from '@tanstack/react-start';
 import { getQuoteDetails, getSignedUrl } from '@/lib/quotes.functions';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Download, Printer, ArrowLeft, Mail, Phone, Globe, MapPin, Building2 } from 'lucide-react';
+import { Loader2, Download, Printer, ArrowLeft, Mail, Phone, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -32,18 +31,18 @@ function QuoteViewPage() {
 
   const { data: logoUrl } = useQuery({
     queryKey: ['signed-logo', details?.quote?.clients?.logo_path],
-    queryFn: () => getSignedUrlFn({ data: { bucket: 'logos', path: details.quote.clients.logo_path } }),
+    queryFn: () => getSignedUrlFn({ data: { bucket: 'logos', path: details?.quote?.clients?.logo_path as string } }),
     enabled: !!details?.quote?.clients?.logo_path
   });
 
   const { data: companyLogoUrl } = useQuery({
     queryKey: ['signed-company-logo', details?.branding?.company_logo_path],
-    queryFn: () => getSignedUrlFn({ data: { bucket: 'logos', path: details.branding.company_logo_path } }),
+    queryFn: () => getSignedUrlFn({ data: { bucket: 'logos', path: details?.branding?.company_logo_path as string } }),
     enabled: !!details?.branding?.company_logo_path
   });
 
   const handleExportPDF = async () => {
-    if (!documentRef.current) return;
+    if (!documentRef.current || !details) return;
     setGenerating(true);
     try {
       const canvas = await html2canvas(documentRef.current, {
@@ -90,7 +89,7 @@ function QuoteViewPage() {
           <ArrowLeft size={18} className="mr-2" /> Voltar
         </Button>
         <div className="flex gap-3">
-          <Button variant="outline" className="border-[#22223a] text-white" onClick={() => window.print()}>
+          <Button variant="outline" className="border-[#22223a] text-white hover:bg-[#22223a]" onClick={() => window.print()}>
             <Printer size={18} className="mr-2" /> Imprimir
           </Button>
           <Button className="bg-[#f97316] hover:bg-[#d96314] text-white" onClick={handleExportPDF} disabled={generating}>
@@ -103,7 +102,6 @@ function QuoteViewPage() {
       <div className="bg-white rounded-lg shadow-2xl overflow-hidden text-slate-900 mx-auto" style={{ width: '210mm', minHeight: '297mm' }}>
         <div ref={documentRef} className="p-[20mm] space-y-8 bg-white" style={{ fontFamily: 'Inter, sans-serif' }}>
           
-          {/* Header */}
           <div className="flex justify-between items-start border-b-2 pb-8" style={{ borderColor: brandColor }}>
             <div className="space-y-4">
               {companyLogoUrl ? (
@@ -111,7 +109,7 @@ function QuoteViewPage() {
               ) : (
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-xl" style={{ backgroundColor: brandColor }}>⚡</div>
-                  <span className="text-2xl font-black tracking-tighter">{branding.company_name || 'PRECIFY3D'}</span>
+                  <span className="text-2xl font-black tracking-tighter uppercase">{branding.company_name || 'PRECIFY3D'}</span>
                 </div>
               )}
               <div className="text-[10px] text-slate-500 space-y-0.5 uppercase tracking-wider font-bold">
@@ -131,22 +129,21 @@ function QuoteViewPage() {
             </div>
           </div>
 
-          {/* Client Info */}
           <div className="grid grid-cols-2 gap-12 bg-slate-50 p-6 rounded-xl border border-slate-100">
             <div className="space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente</p>
-              <div className="space-y-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Cliente</p>
+              <div className="space-y-1 text-left">
                 <h3 className="text-lg font-bold text-slate-800">{quote.clients?.name || quote.client}</h3>
                 {quote.clients?.company && <p className="text-sm text-slate-600 font-medium">{quote.clients.company}</p>}
                 <div className="text-xs text-slate-500 pt-2 space-y-1">
                   {quote.clients?.email && <p className="flex items-center gap-2"><Mail size={12} /> {quote.clients.email}</p>}
                   {quote.clients?.phone && <p className="flex items-center gap-2"><Phone size={12} /> {quote.clients.phone}</p>}
-                  {quote.clients?.address && <p className="flex items-center gap-2"><MapPin size={12} /> {quote.clients.address}</p>}
+                  {quote.clients?.address && <p className="flex items-center gap-2 text-left"><MapPin size={12} className="shrink-0" /> {quote.clients.address}</p>}
                 </div>
               </div>
             </div>
             <div className="space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Condições</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Condições</p>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between border-b border-slate-200 pb-1">
                   <span className="text-slate-500">Prazo de Entrega:</span>
@@ -166,9 +163,8 @@ function QuoteViewPage() {
             </div>
           </div>
 
-          {/* Items Table */}
           <div className="space-y-4">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Itens do Orçamento</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Itens do Orçamento</p>
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b-2 border-slate-800 text-[10px] font-black text-slate-800 uppercase tracking-wider">
@@ -180,7 +176,7 @@ function QuoteViewPage() {
               </thead>
               <tbody className="text-sm">
                 {items?.map((item: any, idx: number) => (
-                  <tr key={idx} className="border-b border-slate-100 group">
+                  <tr key={idx} className="border-b border-slate-100">
                     <td className="py-4 px-2">
                       <p className="font-bold text-slate-800">{item.name}</p>
                       <p className="text-xs text-slate-500 italic">{item.description}</p>
@@ -194,7 +190,6 @@ function QuoteViewPage() {
             </table>
           </div>
 
-          {/* Totals */}
           <div className="flex justify-end pt-4">
             <div className="w-64 space-y-2">
               <div className="flex justify-between text-sm text-slate-500">
@@ -212,17 +207,15 @@ function QuoteViewPage() {
             </div>
           </div>
 
-          {/* Footer Notes */}
           {(quote.public_notes || quote.notes) && (
             <div className="pt-12 space-y-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observações Importantes</p>
-              <div className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-6 rounded-xl border border-slate-100 whitespace-pre-wrap italic">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left">Observações Importantes</p>
+              <div className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-6 rounded-xl border border-slate-100 whitespace-pre-wrap italic text-left">
                 {quote.public_notes || quote.notes}
               </div>
             </div>
           )}
 
-          {/* Terms */}
           <div className="pt-20 text-[9px] text-slate-400 text-center uppercase tracking-widest leading-loose">
             <p>Este orçamento é válido por 15 dias a partir da data de emissão.</p>
             <p>Precify3D • Software de Gestão para Impressão 3D Profissional</p>
