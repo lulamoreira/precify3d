@@ -179,3 +179,31 @@ export const updateProfile = createServerFn({ method: "POST" })
     if (error) throw error;
     return { success: true };
   });
+
+export const getPrinterPresets = createServerFn({ method: "GET" })
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await supabase
+      .from("printer_presets")
+      .select("*")
+      .eq("active", true)
+      .order("brand", { ascending: true })
+      .order("model", { ascending: true });
+    
+    if (error) throw error;
+    return data;
+  });
+
+export const getEnergyTariffs = createServerFn({ method: "GET" })
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data, error } = await supabase
+      .from("energy_tariffs")
+      .select("*")
+      .eq("active", true)
+      .order("uf", { ascending: true });
+    
+    if (error) throw error;
+    return data;
+  });
+
