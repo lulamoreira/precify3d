@@ -186,7 +186,6 @@ function CalculatorPage() {
     setQuotaError(null);
     
     try {
-      // 1. Check/Consume Quota
       const fingerprint = await getPricingFingerprint({
         fileHash: currentFileMetadata?.hash || undefined,
         projectName: form.project || undefined,
@@ -204,16 +203,26 @@ function CalculatorPage() {
         return;
       }
       
-      // 2. Perform Math
-      if (form.useV2 && stlData) {
-        const quantity = Math.max(1, parseInt(form.quantity) || 1);
-        const n = Math.max(1, partsPerPlate);
-        const isBatchActive = batchMode && quantity > 1;
+      if (form.useV2) {
+        const totalQty = Math.max(1, parseInt(form.totalPieces) || 1);
+        const piecesPlate = Math.max(1, parseInt(form.piecesPerPlate) || 1);
+        const isBatchActive = batchMode && totalQty > 1;
 
         if (isBatchActive) {
+          const plateTimeInput = (parseInt(form.plateTimeH) || 0) + (parseInt(form.plateTimeM) || 0) / 60;
+          const singleTimeInput = (form.singleTimeH || form.singleTimeM) 
+            ? (parseInt(form.singleTimeH) || 0) + (parseInt(form.singleTimeM) || 0) / 60 
+            : undefined;
+
+          if (plateTimeInput <= 0) {
+            toast.error("Informe o tempo da placa (você encontra no seu slicer)");
+            setCalculating(false);
+            return;
+          }
+
           const batch = calcBatch({
-            quantidade: quantity,
-            n: n,
+            quantidade: totalQty,
+            n: piecesPlate,
             modo: batchPrintMode,
             volumeExtrudadoMm3,
             pesoG: parseFloat(form.weightG) || 0,
@@ -228,7 +237,7 @@ function CalculatorPage() {
             posMinutos: Number(form.postProcessingMinutes) || 0,
             precoHoraPos: Number(form.postProcessingPriceHour) || 0,
             embalagem: Number(form.packaging) || 0,
-            dimZ: stlData.dimZ,
+            dimZ: stlData?.dimZ || 0,
             layerHeight: settings.layer_height || 0.2,
             volumetricRate: settings.volumetric_rate || 8,
             travelSeg: Number((settings as any).batch_travel_seconds) || 2,
@@ -239,27 +248,35 @@ function CalculatorPage() {
             marginPct: Number(form.marginPct) || 0,
             discountPct: Number(form.discountPct) || 0,
             taxPct: Number(form.taxPct) || 0,
-            platformFeePct: Number(form.platformFee) || 0
+            platformFeePct: Number(form.platformFee) || 0,
+            
+            plateTimeHoursInput: plateTimeInput,
+            singleTimeHoursInput: singleTimeInput,
+            fixedTimeShare: (settings as any).fixed_time_share || 0.15,
+            weightInputMode: form.weightInputMode
           });
+          
           setBatchResult(batch);
           setResult({
-            costMaterial: (batch.unitCost * quantity) / 100 * 40, 
+            costMaterial: batch.unitCost * totalQty, 
             costEnergy: 0,
             costMachine: 0,
             costPost: 0,
-            totalBaseCost: batch.unitCost * quantity,
-            precoTabela: (batch.unitPrice * quantity) / (1 - Number(form.discountPct)/100),
-            precoComDesconto: batch.unitPrice * quantity,
+            totalBaseCost: batch.unitCost * totalQty,
+            precoTabela: (batch.unitPrice * totalQty) / (1 - Number(form.discountPct)/100),
+            precoComDesconto: batch.unitPrice * totalQty,
             finalPrice: batch.finalPrice,
-            profit: batch.finalPrice - (batch.unitCost * quantity),
+            profit: batch.finalPrice - (batch.unitCost * totalQty),
             taxValue: 0,
             platformFeeValue: 0,
-            breakEvenPrice: batch.unitCost * quantity
+            breakEvenPrice: batch.unitCost * totalQty
           } as any);
         } else {
+          // Lógica unitária V2
+          const time = (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60;
           const res = calculatePricingV2({
             weightG: parseFloat(form.weightG) || 0,
-            timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
+            timeHours: time,
             materialPricePerKg: currentMat?.price_per_kg || 100,
             printerWatts: settings.watt,
             kwhPrice: settings.kwh,
@@ -274,10 +291,12 @@ function CalculatorPage() {
             platformFeePct: parseInt(form.platformFee) || 0,
             discountPct: parseInt(form.discountPct) || 0,
             failurePct: parseInt(form.failurePct) || 0,
+            quantity: 1
           });
           setResult(res);
           setBatchResult(null);
         }
+
       } else if (!form.useV2) {
         const res = calculatePricing({
           weightG: parseFloat(form.weightG) || 0,
