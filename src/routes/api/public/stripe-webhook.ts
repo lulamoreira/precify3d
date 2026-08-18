@@ -77,7 +77,7 @@ export const Route = createFileRoute('/api/public/stripe-webhook')({
                 .from('subscriptions')
                 .update({
                   status: subscription.status,
-                  current_period_ends_at: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : new Date().toISOString(),
+                  current_period_ends_at: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : new Date().toISOString(),
                   updated_at: new Date().toISOString()
                 })
                 .eq('user_id', userId);
