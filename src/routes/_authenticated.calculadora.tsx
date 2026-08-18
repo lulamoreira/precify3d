@@ -417,14 +417,20 @@ function CalculatorPage() {
       material_name: currentMat?.name,
       weight_g: Number(form.weightG),
       time_hours: (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
-      unit_price: result.finalPriceUnit || result.finalPrice,
+      unit_price: result.finalPriceUnit || result.finalPrice / Number(form.quantity),
       total_price: result.finalPrice,
       cost_direct: result.subtotal / Number(form.quantity),
-      profit: result.profitUnit || result.profit,
+      profit: result.profitUnit || result.profit / Number(form.quantity),
       stl_path: currentFileMetadata?.path,
       stl_filename: currentFileMetadata?.filename,
       stl_size_bytes: currentFileMetadata?.size,
-      stl_hash: currentFileMetadata?.hash
+      stl_hash: currentFileMetadata?.hash,
+      batch_size: batchMode && parseInt(form.quantity) > 1 ? parseInt(form.quantity) : null,
+      batch_mode: batchMode && parseInt(form.quantity) > 1 ? batchPrintMode : null,
+      plate_capacity: batchResult?.totalPlates || null,
+      plates_count: batchResult?.totalPlates || null,
+      time_per_plate: batchResult?.mesaCheiaResult?.tempo || null,
+      unit_time_hours: batchResult?.totalTime ? batchResult.totalTime / parseInt(form.quantity) : (Number(form.h) || 0) + (Number(form.m) || 0) / 60
     };
     setItems([...items, newItem]);
     toast.success('Peça adicionada ao orçamento!');
