@@ -300,11 +300,17 @@ function HistoryPage() {
                       {quote.client || '-'}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-sm truncate max-w-[120px]">
+                  <TableCell className="text-sm truncate max-w-[150px]">
                     <Link to="/orcamentos/$id" params={{ id: quote.id }} className="hover:underline">
-                      {quote.project}
+                      <p className="font-bold">{quote.project}</p>
+                      {quote.total_pieces && quote.total_pieces > 1 && (
+                        <p className="text-[9px] text-gray-500 font-mono">
+                          {quote.total_pieces} un · {Math.ceil(quote.total_pieces / (quote.pieces_per_plate || 1))} pl · {Math.floor(quote.total_print_hours || 0)}h
+                        </p>
+                      )}
                     </Link>
                   </TableCell>
+
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
