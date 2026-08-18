@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, redirect } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
-import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X, UserPlus, FileText } from 'lucide-react';
+import { LayoutDashboard, Calculator, History, Settings, LogOut, Menu, X, Users, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
