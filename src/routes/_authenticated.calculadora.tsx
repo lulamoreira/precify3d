@@ -1084,7 +1084,13 @@ function CalculatorPage() {
                       <div className="text-right">
                         <p className="text-sm font-bold">R$ {item.total_price.toFixed(2)}</p>
                         <p className="text-[10px] text-green-500">Lucro: R$ {item.profit.toFixed(2)}</p>
+                        {item.total_pieces && item.total_pieces > 1 && (
+                           <p className="text-[8px] text-gray-500 font-mono">
+                             {item.total_pieces} un · {Math.ceil(item.total_pieces / (item.pieces_per_plate || 1))} pl · {Math.floor(item.total_print_hours || 0)}h
+                           </p>
+                        )}
                       </div>
+
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeItem(idx)}>
                         <Trash2 size={14} />
                       </Button>
