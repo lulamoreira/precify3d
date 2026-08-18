@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { createFileRoute, Outlet, redirect, Link } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 
 export const Route = createFileRoute('/_authenticated/admin' as any)({
@@ -22,8 +22,23 @@ export const Route = createFileRoute('/_authenticated/admin' as any)({
 function AdminLayout() {
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-white">Painel Administrativo</h1>
+        <div className="flex items-center gap-2 bg-[#111128] p-1 rounded-lg border border-[#22223a]">
+          <Link 
+            to="/admin" 
+            activeOptions={{ exact: true }}
+            className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
+          >
+            Dashboard
+          </Link>
+          <Link 
+            to="/admin/usuarios" 
+            className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
+          >
+            Usuários
+          </Link>
+        </div>
       </div>
       <Outlet />
     </div>
