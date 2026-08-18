@@ -158,7 +158,7 @@ function AuthenticatedLayout() {
                 <span className="text-[10px] text-[#f97316] font-bold">{Math.round((quota.used / quota.daily_quota) * 100)}%</span>
               </div>
               <Progress value={(quota.used / quota.daily_quota) * 100} className="h-1 bg-[#07071a]" />
-              <Link to={"/planos" as any} className="mt-3 block text-center text-[10px] text-[#f97316] hover:underline font-bold uppercase tracking-tighter cursor-pointer">
+              <Link to="/planos" className="mt-3 block text-center text-[10px] text-[#f97316] hover:underline font-bold uppercase tracking-tighter cursor-pointer">
                 Aumentar Limite
               </Link>
             </div>
@@ -173,7 +173,7 @@ function AuthenticatedLayout() {
               <p className="text-[10px] text-gray-300">
                 Termina em {differenceInDays(new Date(quota.resets_at), new Date())} dias
               </p>
-              <Link to={"/planos" as any} className="mt-2 block text-center text-[10px] text-[#f97316] hover:underline font-bold uppercase cursor-pointer">
+              <Link to="/planos" className="mt-2 block text-center text-[10px] text-[#f97316] hover:underline font-bold uppercase cursor-pointer">
                 Assinar agora
               </Link>
             </div>
