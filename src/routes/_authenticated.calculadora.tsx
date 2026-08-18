@@ -513,13 +513,21 @@ function CalculatorPage() {
                 <CostRow label="Desconto" value={result.discountValue} color="text-red-500" />
               </div>
 
-              <div className="bg-[#f97316] p-6 rounded-2xl text-center space-y-1 shadow-lg shadow-[#f97316]/20">
-                <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Preço Final de Venda</p>
+              <div className={cn(
+                "p-6 rounded-2xl text-center space-y-1 shadow-lg transition-all",
+                result.isLoss ? "bg-red-500 shadow-red-500/20" : "bg-[#f97316] shadow-[#f97316]/20"
+              )}>
+                <p className="text-white/80 text-xs font-bold uppercase tracking-widest">
+                  {result.isLoss ? "⚠️ Prejuízo Detectado" : "Preço Final de Venda"}
+                </p>
                 <h2 className="text-5xl font-black text-white">R$ {result.finalPrice.toFixed(2)}</h2>
                 <div className="flex justify-center gap-4 pt-2">
-                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {((result.profit / result.finalPrice) * 100).toFixed(1)}%</span>
+                   <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Margem Real: {result.realMarginPct.toFixed(1)}%</span>
                    <span className="text-xs bg-white/20 px-2 py-1 rounded text-white font-medium">Lucro: R$ {result.profit.toFixed(2)}</span>
                 </div>
+                {result.isLoss && (
+                  <p className="text-[10px] text-white/90 font-bold mt-2">Ponto de Equilíbrio: R$ {result.breakEvenPrice.toFixed(2)}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-4">
