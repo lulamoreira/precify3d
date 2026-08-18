@@ -172,7 +172,7 @@ function CalculatorPage() {
 
     const timeHours = (Number(form.h) || 0) + (Number(form.m) || 0) / 60;
     
-    const res = calculatePricing({
+    const inputData = {
       weightG: Number(form.weightG),
       timeHours,
       materialPricePerKg: Number(currentMat?.price_per_kg || 0),
@@ -184,9 +184,17 @@ function CalculatorPage() {
       marginPct: Number(form.marginPct),
       discountPct: Number(form.discountPct),
       packagingPrice: Number(form.packaging),
-      platformFeePct: Number(form.platformFee)
-    });
+      platformFeePct: Number(form.platformFee),
+      
+      // V2
+      quantity: Number(form.quantity),
+      taxPct: Number(form.taxPct),
+      setupMinutes: Number(form.setupMinutes),
+      postProcessingPriceHour: Number(form.postProcessingPriceHour),
+      postProcessingMinutes: Number(form.postProcessingMinutes)
+    };
 
+    const res = form.useV2 ? calculatePricingV2(inputData) : calculatePricing(inputData);
     setResult(res);
   };
 
