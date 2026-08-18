@@ -339,14 +339,18 @@ function CalculatorPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 text-white">
+            <div className="grid grid-cols-3 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Cliente</Label>
-                <Input placeholder="Ex: João Silva" value={form.client} onChange={e => setForm({...form, client: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Input placeholder="Ex: João" value={form.client} onChange={e => setForm({...form, client: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
               <div className="space-y-2">
-                <Label>Peça/Projeto</Label>
-                <Input placeholder="Ex: Suporte GPU" value={form.project} onChange={e => setForm({...form, project: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+                <Label>Projeto</Label>
+                <Input placeholder="Ex: Suporte" value={form.project} onChange={e => setForm({...form, project: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
+                <Input type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
               </div>
             </div>
 
