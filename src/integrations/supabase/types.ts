@@ -93,12 +93,20 @@ export type Database = {
           cost_labor: number
           cost_machine: number
           cost_material: number
+          cost_post: number | null
+          cost_setup: number | null
+          cost_support: number | null
           created_at: string
+          dim_x: number | null
+          dim_y: number | null
+          dim_z: number | null
           discount_pct: number
           discount_value: number
+          engine_version: string | null
           failure_pct: number
           final_price: number
           id: string
+          infill_pct: number | null
           margin_pct: number
           margin_value: number
           material_name: string
@@ -109,7 +117,13 @@ export type Database = {
           platform_name: string | null
           profit: number
           project: string | null
+          quantity: number | null
+          source: string | null
+          stl_area_cm2: number | null
+          stl_volume_cm3: number | null
           subtotal: number
+          tax_pct: number | null
+          tax_value: number | null
           time_hours: number
           user_id: string
           weight_g: number
@@ -120,12 +134,20 @@ export type Database = {
           cost_labor: number
           cost_machine: number
           cost_material: number
+          cost_post?: number | null
+          cost_setup?: number | null
+          cost_support?: number | null
           created_at?: string
+          dim_x?: number | null
+          dim_y?: number | null
+          dim_z?: number | null
           discount_pct: number
           discount_value: number
+          engine_version?: string | null
           failure_pct: number
           final_price: number
           id?: string
+          infill_pct?: number | null
           margin_pct: number
           margin_value: number
           material_name: string
@@ -136,7 +158,13 @@ export type Database = {
           platform_name?: string | null
           profit: number
           project?: string | null
+          quantity?: number | null
+          source?: string | null
+          stl_area_cm2?: number | null
+          stl_volume_cm3?: number | null
           subtotal: number
+          tax_pct?: number | null
+          tax_value?: number | null
           time_hours: number
           user_id: string
           weight_g: number
@@ -147,12 +175,20 @@ export type Database = {
           cost_labor?: number
           cost_machine?: number
           cost_material?: number
+          cost_post?: number | null
+          cost_setup?: number | null
+          cost_support?: number | null
           created_at?: string
+          dim_x?: number | null
+          dim_y?: number | null
+          dim_z?: number | null
           discount_pct?: number
           discount_value?: number
+          engine_version?: string | null
           failure_pct?: number
           final_price?: number
           id?: string
+          infill_pct?: number | null
           margin_pct?: number
           margin_value?: number
           material_name?: string
@@ -163,7 +199,13 @@ export type Database = {
           platform_name?: string | null
           profit?: number
           project?: string | null
+          quantity?: number | null
+          source?: string | null
+          stl_area_cm2?: number | null
+          stl_volume_cm3?: number | null
           subtotal?: number
+          tax_pct?: number | null
+          tax_value?: number | null
           time_hours?: number
           user_id?: string
           weight_g?: number
@@ -173,44 +215,71 @@ export type Database = {
       user_settings: {
         Row: {
           created_at: string
+          engine_version: string | null
           failure: number
           id: string
           kwh: number
           labor: number
+          layer_height: number | null
           machine: number
           margin: number
+          nozzle_width: number | null
           packaging: number
           platform_fee: number
+          post_processing_price_hour: number | null
+          setup_minutes: number | null
+          tax_pct: number | null
+          time_calibration: number | null
           updated_at: string
           user_id: string
+          volumetric_rate: number | null
+          walls: number | null
           watt: number
         }
         Insert: {
           created_at?: string
+          engine_version?: string | null
           failure?: number
           id?: string
           kwh?: number
           labor?: number
+          layer_height?: number | null
           machine?: number
           margin?: number
+          nozzle_width?: number | null
           packaging?: number
           platform_fee?: number
+          post_processing_price_hour?: number | null
+          setup_minutes?: number | null
+          tax_pct?: number | null
+          time_calibration?: number | null
           updated_at?: string
           user_id: string
+          volumetric_rate?: number | null
+          walls?: number | null
           watt?: number
         }
         Update: {
           created_at?: string
+          engine_version?: string | null
           failure?: number
           id?: string
           kwh?: number
           labor?: number
+          layer_height?: number | null
           machine?: number
           margin?: number
+          nozzle_width?: number | null
           packaging?: number
           platform_fee?: number
+          post_processing_price_hour?: number | null
+          setup_minutes?: number | null
+          tax_pct?: number | null
+          time_calibration?: number | null
           updated_at?: string
           user_id?: string
+          volumetric_rate?: number | null
+          walls?: number | null
           watt?: number
         }
         Relationships: []

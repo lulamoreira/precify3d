@@ -1,5 +1,6 @@
 export interface STLData {
   volCm3: number;
+  areaCm2: number;
   dimX: number;
   dimY: number;
   dimZ: number;
@@ -29,14 +30,58 @@ export function getMaterialDensity(name: string): number {
 }
 
 export function calcWeightFromSTL(volCm3: number, density: number, infillPct: number): number {
+  // V1 Fallback
   const weight = volCm3 * density * (0.30 + 0.70 * (infillPct / 100));
   return parseFloat(weight.toFixed(1));
 }
 
+/**
+ * V2 Weight Estimation
+ * Considers shell (walls) and infill separately based on surface area and volume
+ */
+export function estimateWeightV2(data: STLData, density: number, infillPct: number, walls: number = 3, layerHeight: number = 0.2, nozzleWidth: number = 0.4): number {
+  const areaMm2 = data.areaCm2 * 100;
+  const volMm3 = data.volCm3 * 1000;
+  
+  // Shell volume estimate: Area * Wall thickness
+  const wallThickness = walls * nozzleWidth;
+  const shellVol = areaMm2 * wallThickness;
+  
+  // Remaining internal volume for infill
+  const internalVol = Math.max(0, volMm3 - shellVol);
+  const infillVol = internalVol * (infillPct / 100);
+  
+  // Total volume in cm3
+  const totalVolCm3 = (shellVol + infillVol) / 1000;
+  
+  // Add 5% for supports if hasOH is true
+  const multiplier = data.hasOH ? 1.05 : 1.0;
+  
+  return parseFloat((totalVolCm3 * density * multiplier).toFixed(1));
+}
+
+/**
+ * V2 Time Estimation
+ * Based on volumetric flow rate (mm3/s)
+ */
+export function estimateTimeHours(volCm3: number, volumetricRateMm3s: number = 8, calibration: number = 1.0): number {
+  if (volumetricRateMm3s <= 0) return 0;
+  const volMm3 = volCm3 * 1000;
+  const seconds = (volMm3 / volumetricRateMm3s) * calibration;
+  // Add 20% for travel time and layer changes
+  const adjustedSeconds = seconds * 1.2;
+  return parseFloat((adjustedSeconds / 3600).toFixed(2));
+}
+
 export function parseSTLBuffer(buffer: ArrayBuffer): { n: number[]; v1: number[]; v2: number[]; v3: number[] }[] {
   const view = new DataView(buffer);
-  const count = view.getUint32(80, true);
   
+  // Check if it's binary or ASCII
+  if (buffer.byteLength < 84) {
+    return parseASCIISTL(new TextDecoder().decode(buffer));
+  }
+  
+  const count = view.getUint32(80, true);
   if (buffer.byteLength === 84 + count * 50) {
     return parseBinarySTL(view, count);
   }
@@ -73,7 +118,9 @@ function parseASCIISTL(text: string) {
       else if (!currentTri.v2) currentTri.v2 = v;
       else currentTri.v3 = v;
     } else if (line.startsWith('endfacet')) {
-      tris.push(currentTri);
+      if (currentTri.v1 && currentTri.v2 && currentTri.v3) {
+        tris.push(currentTri);
+      }
       currentTri = {};
     }
   }
@@ -82,6 +129,7 @@ function parseASCIISTL(text: string) {
 
 export function analyzeTriangles(tris: any[]): STLData {
   let vol = 0;
+  let area = 0;
   let min = [Infinity, Infinity, Infinity];
   let max = [-Infinity, -Infinity, -Infinity];
   let hasOH = false;
@@ -93,6 +141,22 @@ export function analyzeTriangles(tris: any[]): STLData {
             t.v1[1] * (t.v2[2] * t.v3[0] - t.v2[0] * t.v3[2]) +
             t.v1[2] * (t.v2[0] * t.v3[1] - t.v2[1] * t.v3[0])) / 6;
 
+    // Surface Area calculation
+    const ax = t.v2[0] - t.v1[0];
+    const ay = t.v2[1] - t.v1[1];
+    const az = t.v2[2] - t.v1[2];
+    const bx = t.v3[0] - t.v1[0];
+    const by = t.v3[1] - t.v1[1];
+    const bz = t.v3[2] - t.v1[2];
+    
+    // Cross product components
+    const cx = ay * bz - az * by;
+    const cy = az * bx - ax * bz;
+    const cz = ax * by - ay * bx;
+    
+    // Area of triangle = 0.5 * length of cross product
+    area += 0.5 * Math.sqrt(cx * cx + cy * cy + cz * cz);
+
     for (const v of [t.v1, t.v2, t.v3]) {
       for (let i = 0; i < 3; i++) {
         min[i] = Math.min(min[i], v[i]);
@@ -102,8 +166,11 @@ export function analyzeTriangles(tris: any[]): STLData {
 
     if (t.n) {
       const nz = t.n[2];
-      const angle = Math.asin(Math.abs(nz)) * 180 / Math.PI;
-      if (nz < -0.001) {
+      const len = Math.sqrt(t.n[0]**2 + t.n[1]**2 + t.n[2]**2);
+      const normalizedNz = len > 0 ? nz / len : nz;
+      
+      const angle = Math.asin(Math.abs(normalizedNz)) * 180 / Math.PI;
+      if (normalizedNz < -0.001) {
         if (angle < 45) hasOH = true;
         if (angle < 10) hasBridge = true;
       }
@@ -116,9 +183,38 @@ export function analyzeTriangles(tris: any[]): STLData {
 
   return {
     volCm3: Math.abs(vol) / 1000,
+    areaCm2: area / 100,
     dimX, dimY, dimZ,
     hasOH, hasBridge,
     isTall: dimZ > 100,
     count: tris.length
   };
+}
+
+export function parseGCode(text: string): { weightG?: number; timeHours?: number } {
+  let weight: number | undefined;
+  let time: number | undefined;
+
+  const weightRegex = /filament used \[g\]\s*=\s*([\d.]+)/i;
+  const weightMatch = text.match(weightRegex);
+  if (weightMatch) weight = parseFloat(weightMatch[1]);
+  else {
+    const weightRegexCura = /;Filament used:\s*([\d.]+)g/i;
+    const weightMatchCura = text.match(weightRegexCura);
+    if (weightMatchCura) weight = parseFloat(weightMatchCura[1]);
+  }
+
+  const timeCura = text.match(/;TIME:(\d+)/i);
+  if (timeCura) time = parseInt(timeCura[1]) / 3600;
+  else {
+    const timePrusa = text.match(/estimated printing time.*=\s*(?:(\d+)h\s*)?(?:(\d+)m\s*)?(?:(\d+)s)?/i);
+    if (timePrusa) {
+      const h = parseInt(timePrusa[1] || '0');
+      const m = parseInt(timePrusa[2] || '0');
+      const s = parseInt(timePrusa[3] || '0');
+      time = h + m / 60 + s / 3600;
+    }
+  }
+
+  return { weightG: weight, timeHours: time };
 }
