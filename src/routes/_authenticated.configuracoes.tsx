@@ -388,19 +388,23 @@ function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex flex-wrap gap-2">
-                    {printerPresets.map(preset => (
+                    {presets?.filter((p: any) => ['Bambu Lab', 'Creality', 'Elegoo'].includes(p.brand)).map((p: any) => (
                       <Button
-                        key={preset.name}
+                        key={p.id}
                         type="button"
                         variant="outline"
                         size="sm"
                         className="bg-[#07071a] border-[#22223a] hover:bg-[#22223a] text-xs"
-                        onClick={() => applyPreset(preset)}
+                        onClick={() => {
+                          setPendingPreset(p);
+                          setShowPresetAlert(true);
+                        }}
                       >
-                        {preset.name}
+                        {p.brand} {p.model}
                       </Button>
                     ))}
                   </div>
+
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -504,8 +508,9 @@ function SettingsPage() {
                           min={0} 
                           max={1} 
                           step={0.1} 
-                          onValueChange={([val]) => setForm({...form, batch_loss_factor: val})} 
+                          onValueChange={([val]: any) => setForm({...form, batch_loss_factor: val})} 
                         />
+
                       </div>
 
                       <div className="space-y-2">
