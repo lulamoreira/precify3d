@@ -291,6 +291,7 @@ function ProfilePage() {
                 <div className="flex flex-col items-center gap-4 py-4">
                   <div className="relative">
                     <Avatar className="h-24 w-24 border-2 border-[#22223a]">
+                      <AvatarImage src={form.company_logo_path ? `${supabase.storage.from('logos').getPublicUrl(form.company_logo_path).data.publicUrl}` : undefined} />
                       <AvatarFallback className="bg-[#07071a] text-3xl">
                         {form.company_name?.charAt(0) || <Building2 />}
                       </AvatarFallback>
