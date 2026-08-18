@@ -834,6 +834,141 @@ function CalculatorPage() {
       </div>
 
       <div className="space-y-6">
+        {form.useV2 && parseInt(form.quantity) > 1 && batchMode && batchResult && (
+          <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">Análise de Lote</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Produção otimizada para {form.quantity} unidades
+                  </CardDescription>
+                </div>
+                <div className="bg-[#f97316]/20 text-[#f97316] px-3 py-1 rounded-full text-xs font-bold border border-[#f97316]/30">
+                  {batchResult.totalPlates} {batchResult.totalPlates === 1 ? 'mesa' : 'mesas'}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#07071a] p-4 rounded-xl border border-[#22223a] space-y-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo por Peça</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-black text-white">R$ {batchResult.unitPrice.toFixed(2)}</span>
+                    <span className="text-[10px] text-green-500 font-bold">
+                      -{(((1 - batchResult.unitPrice / (result?.finalPrice || 1)) * 100) || 0).toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Solo: R$ {(result?.finalPrice || 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-[#07071a] p-4 rounded-xl border border-[#22223a] space-y-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Risco de Perda</p>
+                  {(() => {
+                    const risk = (plateRisk({
+                      n: partsPerPlate,
+                      failurePct: Number(form.failurePct) || 0,
+                      modo: batchPrintMode,
+                      killsPlate: (settings as any)?.batch_kills_plate ?? true,
+                      lossFactor: (settings as any)?.batch_loss_factor || 0.6
+                    }).pMesa * 100);
+                    
+                    let color = "text-green-500";
+                    if (risk > 35) color = "text-red-500";
+                    else if (risk > 15) color = "text-amber-500";
+
+                    return (
+                      <>
+                        <div className="flex items-baseline gap-2">
+                          <span className={cn("text-xl font-black", color)}>{risk.toFixed(1)}%</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400">Probabilidade por mesa</p>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Gráfico da Curva de Custo */}
+              <div className="h-48 w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={(() => {
+                    if (!stlData || !settings) return [];
+                    const data = [];
+                    const capMax = Math.min(100, (plateCapacity({
+                      dimX: stlData.dimX,
+                      dimY: stlData.dimY,
+                      dimZ: stlData.dimZ,
+                      bedX: Number((settings as any).bed_x) || 256,
+                      bedY: Number((settings as any).bed_y) || 256,
+                      bedZ: Number((settings as any).bed_z) || 256,
+                      margin: Number((settings as any).plate_margin) || 5,
+                      gap: Number((settings as any).part_gap) || 8
+                    }).capacidade || 1));
+
+                    for (let n = 1; n <= capMax; n++) {
+                      const b = calcBatch({
+                        quantidade: parseInt(form.quantity),
+                        n: n,
+                        modo: batchPrintMode,
+                        volumeExtrudadoMm3,
+                        pesoG: parseFloat(form.weightG) || 0,
+                        pesoSuporteG,
+                        plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                        precoKg: currentMat?.price_per_kg || 100,
+                        watts: settings.watt,
+                        precoKwh: settings.kwh,
+                        precoHoraMaquina: settings.machine,
+                        setupMinutes: Number(form.setupMinutes) || 0,
+                        precoHoraMaoObra: settings.labor,
+                        posMinutos: Number(form.postProcessingMinutes) || 0,
+                        precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                        embalagem: Number(form.packaging) || 0,
+                        dimZ: stlData.dimZ,
+                        layerHeight: settings.layer_height || 0.2,
+                        volumetricRate: settings.volumetric_rate || 8,
+                        travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+                        calibracao: settings.time_calibration || 1.0,
+                        failurePct: Number(form.failurePct) || 0,
+                        killsPlate: (settings as any).batch_kills_plate ?? true,
+                        lossFactor: (settings as any).batch_loss_factor || 0.6,
+                        marginPct: Number(form.marginPct) || 0,
+                        discountPct: Number(form.discountPct) || 0,
+                        taxPct: Number(form.taxPct) || 0,
+                        platformFeePct: Number(form.platformFee) || 0
+                      });
+                      data.push({ n, unitPrice: b.unitPrice });
+                    }
+                    return data;
+                  })()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#22223a" />
+                    <XAxis dataKey="n" stroke="#666" fontSize={10} />
+                    <YAxis hide domain={['auto', 'auto']} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#111128', border: '1px solid #22223a', borderRadius: '8px' }}
+                      itemStyle={{ color: '#f97316' }}
+                      labelStyle={{ color: '#fff' }}
+                    />
+                    <ReferenceLine x={partsPerPlate} stroke="#f97316" strokeDasharray="3 3" />
+                    <Line type="monotone" dataKey="unitPrice" stroke="#f97316" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-center text-gray-500 mt-2">Custo Unitário x Peças por Mesa</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Produção total:</span>
+                  <span className="font-mono">{batchResult.mesasCheias} mesa{batchResult.mesasCheias !== 1 ? 's' : ''} cheia{batchResult.mesasCheias !== 1 ? 's' : ''} {batchResult.resto > 0 ? `+ 1 mesa com ${batchResult.resto}` : ''}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Tempo total:</span>
+                  <span className="font-mono">{Math.floor(batchResult.totalTime)}h {Math.round((batchResult.totalTime - Math.floor(batchResult.totalTime)) * 60)}min</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {result ? (
           <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-fadeIn border-l-4 border-l-[#f97316]">
             <CardHeader>
