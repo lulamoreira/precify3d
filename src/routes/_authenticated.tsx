@@ -120,12 +120,12 @@ function AuthenticatedLayout() {
   };
 
   const navItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, to: '/' as const },
-    { label: 'Calculadora', icon: Calculator, to: '/calculadora' as const },
-    { label: 'Orçamentos', icon: History, to: '/historico' as const },
-    { label: 'Clientes', icon: Users, to: '/clientes' as const },
-    { label: 'Configurações', icon: Settings, to: '/configuracoes' as const },
-    ...(profile?.role === 'admin' ? [{ label: 'Admin', icon: ShieldCheck, to: '/admin' as const }] : []),
+    { label: 'Dashboard', icon: LayoutDashboard, to: '/' },
+    { label: 'Calculadora', icon: Calculator, to: '/calculadora' },
+    { label: 'Orçamentos', icon: History, to: '/historico' },
+    { label: 'Clientes', icon: Users, to: '/clientes' },
+    { label: 'Configurações', icon: Settings, to: '/configuracoes' },
+    ...(profile?.role === 'admin' ? [{ label: 'Admin', icon: ShieldCheck, to: '/admin' }] : []),
   ];
 
   return (
