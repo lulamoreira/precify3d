@@ -231,7 +231,15 @@ function CalculatorPage() {
       discount_value: result.discountValue,
       final_price: result.finalPrice,
       profit: result.profit,
-      notes: form.notes
+      notes: form.notes,
+      
+      // V2 Fields
+      quantity: Number(form.quantity),
+      tax_pct: Number(form.taxPct),
+      tax_value: result.taxValue,
+      cost_post: result.costPost,
+      cost_setup: result.costSetup,
+      engine_version: form.useV2 ? 'v2' : 'v1'
     });
   };
 
