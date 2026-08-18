@@ -136,9 +136,17 @@ function PlansPage() {
                     ? "bg-transparent border border-[#22223a] text-gray-400 hover:bg-[#22223a] hover:text-white" 
                     : "bg-[#f97316] hover:bg-[#d96314] text-white"
                 )}
-                disabled={plan.is_free}
+                disabled={plan.is_free || checkoutMutation.isPending}
+                onClick={() => checkoutMutation.mutate(plan.code)}
               >
-                {plan.is_free ? 'Plano Atual' : 'Começar Agora'}
+                {checkoutMutation.isPending && checkoutMutation.variables === plan.code ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  plan.is_free ? 'Plano Atual' : 'Começar Agora'
+                )}
               </Button>
             </CardFooter>
           </Card>
