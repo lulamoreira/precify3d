@@ -26,14 +26,14 @@ function AdminLayout() {
         <h1 className="text-3xl font-bold text-white">Painel Administrativo</h1>
         <div className="flex items-center gap-2 bg-[#111128] p-1 rounded-lg border border-[#22223a]">
           <Link 
-            to="/admin" 
+            to={"/admin" as any} 
             activeOptions={{ exact: true }}
             className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
           >
             Dashboard
           </Link>
           <Link 
-            to="/admin/usuarios" 
+            to={"/admin/usuarios" as any} 
             className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
           >
             Usuários
