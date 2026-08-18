@@ -226,7 +226,7 @@ function CalculatorPage() {
           setupMinutes: parseInt(form.setupMinutes) || 0,
           postProcessingPriceHour: parseInt(form.postProcessingPriceHour) || 0,
           postProcessingMinutes: parseInt(form.postProcessingMinutes) || 0,
-          packagingCost: parseInt(form.packaging) || 0,
+          packagingPrice: parseInt(form.packaging) || 0,
           marginPct: parseInt(form.marginPct) || 0,
           taxPct: parseInt(form.taxPct) || 0,
           platformFeePct: parseInt(form.platformFee) || 0,
@@ -239,8 +239,17 @@ function CalculatorPage() {
     } else if (!form.useV2) {
       const res = calculatePricing({
         weightG: parseFloat(form.weightG) || 0,
+        timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
         materialPricePerKg: currentMat?.price_per_kg || 100,
+        kwhPrice: settings.kwh,
+        printerWatts: settings.watt,
+        laborPricePerHour: settings.labor,
+        machinePricePerHour: settings.machine,
+        failurePct: parseInt(form.failurePct) || 0,
         marginPct: parseInt(form.marginPct) || 0,
+        discountPct: parseInt(form.discountPct) || 0,
+        packagingPrice: parseInt(form.packaging) || 0,
+        platformFeePct: parseInt(form.platformFee) || 0
       });
       setResult(res as any);
       setBatchResult(null);
