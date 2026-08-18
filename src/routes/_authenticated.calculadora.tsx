@@ -14,7 +14,9 @@ import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, parseGCode, estimateWeightV2, estimateTimeHours, type STLData } from '@/lib/stl-utils';
+import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, parseGCode, estimateWeightV2, estimateTimeHours, layerCount, type STLData } from '@/lib/stl-utils';
+import { plateCapacity, plateTimeHours, plateRisk, calcBatch } from '@/lib/batch-utils';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { calculatePricing, calculatePricingV2, type PricingResult } from '@/lib/pricing-utils';
 import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle, Save, FileText, Plus, UserPlus, Trash2, GripVertical } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -76,6 +78,11 @@ function CalculatorPage() {
     hash: string | null;
   } | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [batchMode, setBatchMode] = useState(true);
+  const [batchPrintMode, setBatchPrintMode] = useState<'simultaneo' | 'sequencial'>('simultaneo');
+  const [partsPerPlate, setPartsPerPlate] = useState<number>(1);
+  const [volumeExtrudadoMm3, setVolumeExtrudadoMm3] = useState(0);
+  const [batchResult, setBatchResult] = useState<any>(null);
 
   const [stlData, setStlData] = useState<STLData | null>(null);
   const [stlLoading, setStlLoading] = useState(false);
@@ -104,7 +111,7 @@ function CalculatorPage() {
     }
   }, [settings, materials]);
 
-  const [volumeExtrudadoMm3, setVolumeExtrudadoMm3] = useState(0);
+  const [pesoSuporteG, setPesoSuporteG] = useState(0);
 
   useEffect(() => {
     if (stlData) {
@@ -119,6 +126,7 @@ function CalculatorPage() {
         );
         
         setVolumeExtrudadoMm3(weightObj.volumeExtrudadoMm3);
+        setPesoSuporteG(weightObj.pesoSuporteG);
         
         const time = estimateTimeHours({
           volumeExtrudadoMm3: weightObj.volumeExtrudadoMm3,
@@ -131,12 +139,144 @@ function CalculatorPage() {
         const h = Math.floor(time);
         const m = Math.round((time - h) * 60);
         setForm(f => ({ ...f, weightG: weightObj.pesoG.toString(), h: h.toString(), m: m.toString() }));
+
+        // Lógica de Capacidade da Mesa
+        const cap = plateCapacity({
+          dimX: stlData.dimX,
+          dimY: stlData.dimY,
+          dimZ: stlData.dimZ,
+          bedX: Number((settings as any).bed_x) || 256,
+          bedY: Number((settings as any).bed_y) || 256,
+          bedZ: Number((settings as any).bed_z) || 256,
+          margin: Number((settings as any).plate_margin) || 5,
+          gap: Number((settings as any).part_gap) || 8
+        });
+        
+        if (cap.fits) {
+          setPartsPerPlate(prev => prev > cap.capacidade ? cap.capacidade : (prev || cap.capacidade));
+        }
       } else {
         const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
         setForm(f => ({ ...f, weightG: weight.toString() }));
       }
     }
   }, [stlData, infill, density, form.useV2, settings]);
+
+  useEffect(() => {
+    if (form.useV2 && settings && stlData) {
+      const quantity = Math.max(1, parseInt(form.quantity) || 1);
+      const n = Math.max(1, partsPerPlate);
+      const isBatchActive = batchMode && quantity > 1;
+
+      if (isBatchActive) {
+        const batch = calcBatch({
+          quantidade: quantity,
+          n: n,
+          modo: batchPrintMode,
+          volumeExtrudadoMm3,
+          pesoG: parseFloat(form.weightG) || 0,
+          pesoSuporteG,
+          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+          precoKg: currentMat?.price_per_kg || 100,
+          watts: settings.watt,
+          precoKwh: settings.kwh,
+          precoHoraMaquina: settings.machine,
+          setupMinutes: Number(form.setupMinutes) || 0,
+          precoHoraMaoObra: settings.labor,
+          posMinutos: Number(form.postProcessingMinutes) || 0,
+          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+          embalagem: Number(form.packaging) || 0,
+          dimZ: stlData.dimZ,
+          layerHeight: settings.layer_height || 0.2,
+          volumetricRate: settings.volumetric_rate || 8,
+          travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+          calibracao: settings.time_calibration || 1.0,
+          failurePct: Number(form.failurePct) || 0,
+          killsPlate: (settings as any).batch_kills_plate ?? true,
+          lossFactor: (settings as any).batch_loss_factor || 0.6,
+          marginPct: Number(form.marginPct) || 0,
+          discountPct: Number(form.discountPct) || 0,
+          taxPct: Number(form.taxPct) || 0,
+          platformFeePct: Number(form.platformFee) || 0
+        });
+        setBatchResult(batch);
+        setResult({
+          costMaterial: (batch.unitCost * quantity) / 100 * 40, // Mock for structure
+          costEnergy: 0,
+          costMachine: 0,
+          costPost: 0,
+          totalBaseCost: batch.unitCost * quantity,
+          precoTabela: (batch.unitPrice * quantity) / (1 - Number(form.discountPct)/100),
+          precoComDesconto: batch.unitPrice * quantity,
+          finalPrice: batch.finalPrice,
+          profit: batch.finalPrice - (batch.unitCost * quantity),
+          taxValue: 0,
+          platformFeeValue: 0,
+          breakEvenPrice: batch.unitCost * quantity
+        } as any);
+      } else {
+        const res = calculatePricingV2({
+          weightG: parseFloat(form.weightG) || 0,
+          timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
+          materialPricePerKg: currentMat?.price_per_kg || 100,
+          printerWatts: settings.watt,
+          kwhPrice: settings.kwh,
+          machinePricePerHour: settings.machine,
+          laborPricePerHour: settings.labor,
+          setupMinutes: parseInt(form.setupMinutes) || 0,
+          postProcessingPriceHour: parseInt(form.postProcessingPriceHour) || 0,
+          postProcessingMinutes: parseInt(form.postProcessingMinutes) || 0,
+          packagingPrice: parseInt(form.packaging) || 0,
+          marginPct: parseInt(form.marginPct) || 0,
+          taxPct: parseInt(form.taxPct) || 0,
+          platformFeePct: parseInt(form.platformFee) || 0,
+          discountPct: parseInt(form.discountPct) || 0,
+          failurePct: parseInt(form.failurePct) || 0,
+        });
+        setResult(res);
+        setBatchResult(null);
+      }
+    } else if (!form.useV2) {
+      const res = calculatePricing({
+        weightG: parseFloat(form.weightG) || 0,
+        timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
+        materialPricePerKg: currentMat?.price_per_kg || 100,
+        kwhPrice: settings?.kwh || 0,
+        printerWatts: settings?.watt || 0,
+        laborPricePerHour: settings?.labor || 0,
+        machinePricePerHour: settings?.machine || 0,
+        failurePct: parseInt(form.failurePct) || 0,
+        marginPct: parseInt(form.marginPct) || 0,
+        discountPct: parseInt(form.discountPct) || 0,
+        packagingPrice: parseInt(form.packaging) || 0,
+        platformFeePct: parseInt(form.platformFee) || 0
+      });
+      setResult(res as any);
+      setBatchResult(null);
+    }
+  }, [
+    form.quantity, 
+    form.weightG, 
+    form.h, 
+    form.m, 
+    form.failurePct, 
+    form.marginPct, 
+    form.discountPct, 
+    form.taxPct, 
+    form.setupMinutes, 
+    form.postProcessingMinutes, 
+    form.postProcessingPriceHour, 
+    form.packaging, 
+    form.platformFee, 
+    form.useV2, 
+    settings, 
+    stlData, 
+    batchMode, 
+    batchPrintMode, 
+    partsPerPlate,
+    volumeExtrudadoMm3,
+    pesoSuporteG
+  ]);
 
   const handleFile = async (file: File) => {
     const ext = file.name.toLowerCase().split('.').pop();
@@ -277,14 +417,20 @@ function CalculatorPage() {
       material_name: currentMat?.name,
       weight_g: Number(form.weightG),
       time_hours: (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
-      unit_price: result.finalPriceUnit || result.finalPrice,
+      unit_price: result.finalPriceUnit || result.finalPrice / Number(form.quantity),
       total_price: result.finalPrice,
       cost_direct: result.subtotal / Number(form.quantity),
-      profit: result.profitUnit || result.profit,
+      profit: result.profitUnit || result.profit / Number(form.quantity),
       stl_path: currentFileMetadata?.path,
       stl_filename: currentFileMetadata?.filename,
       stl_size_bytes: currentFileMetadata?.size,
-      stl_hash: currentFileMetadata?.hash
+      stl_hash: currentFileMetadata?.hash,
+      batch_size: batchMode && parseInt(form.quantity) > 1 ? parseInt(form.quantity) : null,
+      batch_mode: batchMode && parseInt(form.quantity) > 1 ? batchPrintMode : null,
+      plate_capacity: batchResult?.totalPlates || null,
+      plates_count: batchResult?.totalPlates || null,
+      time_per_plate: batchResult?.mesaCheiaResult?.tempo || null,
+      unit_time_hours: batchResult?.totalTime ? batchResult.totalTime / parseInt(form.quantity) : (Number(form.h) || 0) + (Number(form.m) || 0) / 60
     };
     setItems([...items, newItem]);
     toast.success('Peça adicionada ao orçamento!');
@@ -445,6 +591,72 @@ function CalculatorPage() {
               </div>
             </div>
 
+            {form.useV2 && parseInt(form.quantity) > 1 && (
+              <div className="p-4 bg-[#07071a] border border-[#f97316]/30 rounded-xl space-y-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package size={18} className="text-[#f97316]" />
+                    <Label className="text-sm font-semibold">Produção em Lote</Label>
+                  </div>
+                  <Switch checked={batchMode} onCheckedChange={setBatchMode} />
+                </div>
+
+                {batchMode && (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-gray-400">Como imprime</Label>
+                        <Select value={batchPrintMode} onValueChange={(v: any) => setBatchPrintMode(v)}>
+                          <SelectTrigger className="bg-[#111128] border-[#22223a] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                            <SelectItem value="simultaneo">Simultâneo (todas juntas)</SelectItem>
+                            <SelectItem value="sequencial">Sequencial (uma por vez)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] uppercase text-gray-400">Peças por mesa</Label>
+                        <div className="flex gap-1">
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            value={partsPerPlate} 
+                            onChange={e => setPartsPerPlate(Math.max(1, parseInt(e.target.value) || 1))} 
+                            className="bg-[#111128] border-[#22223a] h-8 text-xs"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-[9px] px-2 bg-[#22223a] border-[#33334d]"
+                            onClick={() => {
+                              if (stlData && settings) {
+                                const cap = plateCapacity({
+                                  dimX: stlData.dimX,
+                                  dimY: stlData.dimY,
+                                  dimZ: stlData.dimZ,
+                                  bedX: Number((settings as any).bed_x) || 256,
+                                  bedY: Number((settings as any).bed_y) || 256,
+                                  bedZ: Number((settings as any).bed_z) || 256,
+                                  margin: Number((settings as any).plate_margin) || 5,
+                                  gap: Number((settings as any).part_gap) || 8
+                                });
+                                setPartsPerPlate(cap.capacidade || 1);
+                              }
+                            }}
+                          >
+                            IDEAL
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+
             <div className="grid grid-cols-2 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Material</Label>
@@ -540,6 +752,152 @@ function CalculatorPage() {
               </div>
             </div>
 
+            {form.useV2 && stlData && settings && (
+              <div className="space-y-4 pt-4 border-t border-[#22223a]">
+                <div className="flex items-center justify-between">
+                  <Label className="text-white font-semibold">Tabela de Preço por Quantidade</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-[10px] text-gray-400 hover:text-white h-7"
+                    onClick={() => {
+                      const quantities = [1, 5, 10, 25, 50, 100].filter(q => q <= 200);
+                      let tableText = "Tabela de Preços:\n";
+                      quantities.forEach(q => {
+                        const b = calcBatch({
+                          quantidade: q,
+                          n: partsPerPlate,
+                          modo: batchPrintMode,
+                          volumeExtrudadoMm3,
+                          pesoG: parseFloat(form.weightG) || 0,
+                          pesoSuporteG,
+                          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                          precoKg: currentMat?.price_per_kg || 100,
+                          watts: settings.watt,
+                          precoKwh: settings.kwh,
+                          precoHoraMaquina: settings.machine,
+                          setupMinutes: Number(form.setupMinutes) || 0,
+                          precoHoraMaoObra: settings.labor,
+                          posMinutos: Number(form.postProcessingMinutes) || 0,
+                          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                          embalagem: Number(form.packaging) || 0,
+                          dimZ: stlData.dimZ,
+                          layerHeight: settings.layer_height || 0.2,
+                          volumetricRate: settings.volumetric_rate || 8,
+                          travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+                          calibracao: settings.time_calibration || 1.0,
+                          failurePct: Number(form.failurePct) || 0,
+                          killsPlate: (settings as any).batch_kills_plate ?? true,
+                          lossFactor: (settings as any).batch_loss_factor || 0.6,
+                          marginPct: Number(form.marginPct) || 0,
+                          discountPct: Number(form.discountPct) || 0,
+                          taxPct: Number(form.taxPct) || 0,
+                          platformFeePct: Number(form.platformFee) || 0
+                        });
+                        tableText += `${q} un: R$ ${b.unitPrice.toFixed(2)}/un (Total: R$ ${b.finalPrice.toFixed(2)})\n`;
+                      });
+                      setForm(f => ({ ...f, publicNotes: f.publicNotes + "\n" + tableText }));
+                      toast.success('Tabela adicionada às observações!');
+                    }}
+                  >
+                    <Plus size={12} className="mr-1" />
+                    Add ao Orçamento
+                  </Button>
+                </div>
+                
+                <div className="bg-[#07071a] rounded-xl border border-[#22223a] overflow-hidden">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-[#111128] text-gray-400">
+                      <tr>
+                        <th className="py-2 px-3 text-left">Qtd</th>
+                        <th className="py-2 px-3 text-right">Unitário</th>
+                        <th className="py-2 px-3 text-right">Total</th>
+                        <th className="py-2 px-3 text-right">Desc %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#22223a]">
+                      {(() => {
+                        const quantities = [1, 5, 10, 25, 50, 100].filter(q => q <= 200);
+                        const basePrice = calcBatch({
+                          quantidade: 1,
+                          n: 1,
+                          modo: 'sequencial',
+                          volumeExtrudadoMm3,
+                          pesoG: parseFloat(form.weightG) || 0,
+                          pesoSuporteG,
+                          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                          precoKg: currentMat?.price_per_kg || 100,
+                          watts: settings.watt,
+                          precoKwh: settings.kwh,
+                          precoHoraMaquina: settings.machine,
+                          setupMinutes: Number(form.setupMinutes) || 0,
+                          precoHoraMaoObra: settings.labor,
+                          posMinutos: Number(form.postProcessingMinutes) || 0,
+                          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                          embalagem: Number(form.packaging) || 0,
+                          dimZ: stlData.dimZ,
+                          layerHeight: settings.layer_height || 0.2,
+                          volumetricRate: settings.volumetric_rate || 8,
+                          travelSeg: 0,
+                          calibracao: settings.time_calibration || 1.0,
+                          failurePct: Number(form.failurePct) || 0,
+                          killsPlate: (settings as any).batch_kills_plate ?? true,
+                          lossFactor: (settings as any).batch_loss_factor || 0.6,
+                          marginPct: Number(form.marginPct) || 0,
+                          discountPct: Number(form.discountPct) || 0,
+                          taxPct: Number(form.taxPct) || 0,
+                          platformFeePct: Number(form.platformFee) || 0
+                        }).unitPrice;
+
+                        return quantities.map(q => {
+                          const b = calcBatch({
+                            quantidade: q,
+                            n: partsPerPlate,
+                            modo: batchPrintMode,
+                            volumeExtrudadoMm3,
+                            pesoG: parseFloat(form.weightG) || 0,
+                            pesoSuporteG,
+                            plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                            precoKg: currentMat?.price_per_kg || 100,
+                            watts: settings.watt,
+                            precoKwh: settings.kwh,
+                            precoHoraMaquina: settings.machine,
+                            setupMinutes: Number(form.setupMinutes) || 0,
+                            precoHoraMaoObra: settings.labor,
+                            posMinutos: Number(form.postProcessingMinutes) || 0,
+                            precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                            embalagem: Number(form.packaging) || 0,
+                            dimZ: stlData.dimZ,
+                            layerHeight: settings.layer_height || 0.2,
+                            volumetricRate: settings.volumetric_rate || 8,
+                            travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+                            calibracao: settings.time_calibration || 1.0,
+                            failurePct: Number(form.failurePct) || 0,
+                            killsPlate: (settings as any).batch_kills_plate ?? true,
+                            lossFactor: (settings as any).batch_loss_factor || 0.6,
+                            marginPct: Number(form.marginPct) || 0,
+                            discountPct: Number(form.discountPct) || 0,
+                            taxPct: Number(form.taxPct) || 0,
+                            platformFeePct: Number(form.platformFee) || 0
+                          });
+                          const disc = ((1 - b.unitPrice / basePrice) * 100);
+                          return (
+                            <tr key={q} className="hover:bg-[#111128]/50">
+                              <td className="py-2 px-3 text-white font-medium">{q} un</td>
+                              <td className="py-2 px-3 text-right font-mono text-gray-300">R$ {b.unitPrice.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-white">R$ {b.finalPrice.toFixed(2)}</td>
+                              <td className="py-2 px-3 text-right font-mono text-green-500">{disc > 0 ? disc.toFixed(0) + '%' : '-'}</td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+
             <div className="grid grid-cols-3 gap-4 text-white">
               <div className="space-y-2">
                 <Label>Falha (%)</Label>
@@ -628,6 +986,141 @@ function CalculatorPage() {
       </div>
 
       <div className="space-y-6">
+        {form.useV2 && parseInt(form.quantity) > 1 && batchMode && batchResult && (
+          <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <CardHeader className="pb-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">Análise de Lote</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Produção otimizada para {form.quantity} unidades
+                  </CardDescription>
+                </div>
+                <div className="bg-[#f97316]/20 text-[#f97316] px-3 py-1 rounded-full text-xs font-bold border border-[#f97316]/30">
+                  {batchResult.totalPlates} {batchResult.totalPlates === 1 ? 'mesa' : 'mesas'}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#07071a] p-4 rounded-xl border border-[#22223a] space-y-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Custo por Peça</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl font-black text-white">R$ {batchResult.unitPrice.toFixed(2)}</span>
+                    <span className="text-[10px] text-green-500 font-bold">
+                      -{(((1 - batchResult.unitPrice / (result?.finalPrice || 1)) * 100) || 0).toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Solo: R$ {(result?.finalPrice || 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-[#07071a] p-4 rounded-xl border border-[#22223a] space-y-1">
+                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Risco de Perda</p>
+                  {(() => {
+                    const risk = (plateRisk({
+                      n: partsPerPlate,
+                      failurePct: Number(form.failurePct) || 0,
+                      modo: batchPrintMode,
+                      killsPlate: (settings as any)?.batch_kills_plate ?? true,
+                      lossFactor: (settings as any)?.batch_loss_factor || 0.6
+                    }).pMesa * 100);
+                    
+                    let color = "text-green-500";
+                    if (risk > 35) color = "text-red-500";
+                    else if (risk > 15) color = "text-amber-500";
+
+                    return (
+                      <>
+                        <div className="flex items-baseline gap-2">
+                          <span className={cn("text-xl font-black", color)}>{risk.toFixed(1)}%</span>
+                        </div>
+                        <p className="text-[10px] text-gray-400">Probabilidade por mesa</p>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Gráfico da Curva de Custo */}
+              <div className="h-48 w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={(() => {
+                    if (!stlData || !settings) return [];
+                    const data = [];
+                    const capMax = Math.min(100, (plateCapacity({
+                      dimX: stlData.dimX,
+                      dimY: stlData.dimY,
+                      dimZ: stlData.dimZ,
+                      bedX: Number((settings as any).bed_x) || 256,
+                      bedY: Number((settings as any).bed_y) || 256,
+                      bedZ: Number((settings as any).bed_z) || 256,
+                      margin: Number((settings as any).plate_margin) || 5,
+                      gap: Number((settings as any).part_gap) || 8
+                    }).capacidade || 1));
+
+                    for (let n = 1; n <= capMax; n++) {
+                      const b = calcBatch({
+                        quantidade: parseInt(form.quantity),
+                        n: n,
+                        modo: batchPrintMode,
+                        volumeExtrudadoMm3,
+                        pesoG: parseFloat(form.weightG) || 0,
+                        pesoSuporteG,
+                        plateWasteG: Number((settings as any).plate_waste_g) || 5,
+                        precoKg: currentMat?.price_per_kg || 100,
+                        watts: settings.watt,
+                        precoKwh: settings.kwh,
+                        precoHoraMaquina: settings.machine,
+                        setupMinutes: Number(form.setupMinutes) || 0,
+                        precoHoraMaoObra: settings.labor,
+                        posMinutos: Number(form.postProcessingMinutes) || 0,
+                        precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+                        embalagem: Number(form.packaging) || 0,
+                        dimZ: stlData.dimZ,
+                        layerHeight: settings.layer_height || 0.2,
+                        volumetricRate: settings.volumetric_rate || 8,
+                        travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+                        calibracao: settings.time_calibration || 1.0,
+                        failurePct: Number(form.failurePct) || 0,
+                        killsPlate: (settings as any).batch_kills_plate ?? true,
+                        lossFactor: (settings as any).batch_loss_factor || 0.6,
+                        marginPct: Number(form.marginPct) || 0,
+                        discountPct: Number(form.discountPct) || 0,
+                        taxPct: Number(form.taxPct) || 0,
+                        platformFeePct: Number(form.platformFee) || 0
+                      });
+                      data.push({ n, unitPrice: b.unitPrice });
+                    }
+                    return data;
+                  })()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#22223a" />
+                    <XAxis dataKey="n" stroke="#666" fontSize={10} />
+                    <YAxis hide domain={['auto', 'auto']} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#111128', border: '1px solid #22223a', borderRadius: '8px' }}
+                      itemStyle={{ color: '#f97316' }}
+                      labelStyle={{ color: '#fff' }}
+                    />
+                    <ReferenceLine x={partsPerPlate} stroke="#f97316" strokeDasharray="3 3" />
+                    <Line type="monotone" dataKey="unitPrice" stroke="#f97316" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="text-[10px] text-center text-gray-500 mt-2">Custo Unitário x Peças por Mesa</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Produção total:</span>
+                  <span className="font-mono">{batchResult.mesasCheias} mesa{batchResult.mesasCheias !== 1 ? 's' : ''} cheia{batchResult.mesasCheias !== 1 ? 's' : ''} {batchResult.resto > 0 ? `+ 1 mesa com ${batchResult.resto}` : ''}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Tempo total:</span>
+                  <span className="font-mono">{Math.floor(batchResult.totalTime)}h {Math.round((batchResult.totalTime - Math.floor(batchResult.totalTime)) * 60)}min</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {result ? (
           <Card className="bg-[#111128] border-[#22223a] text-white rounded-2xl overflow-hidden shadow-2xl animate-fadeIn border-l-4 border-l-[#f97316]">
             <CardHeader>
