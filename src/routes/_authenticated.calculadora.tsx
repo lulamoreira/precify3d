@@ -495,13 +495,20 @@ function CalculatorPage() {
                 <CostRow label="Energia Elétrica" value={result.costEnergy} />
                 <CostRow label="Mão de Obra" value={result.costLabor} />
                 <CostRow label="Desgaste Máquina" value={result.costMachine} />
-                <CostRow label="Embalagem" value={Number(form.packaging)} />
+                {form.useV2 && (
+                  <>
+                    <CostRow label="Setup Inicial" value={result.costSetup} />
+                    <CostRow label="Pós-Processo" value={result.costPost} />
+                  </>
+                )}
+                <CostRow label="Embalagem" value={Number(form.packaging) * Number(form.quantity)} />
                 <Separator className="bg-[#22223a]" />
                 <div className="flex justify-between items-center py-1">
-                  <span className="font-bold text-white">CUSTO TOTAL</span>
+                  <span className="font-bold text-white">CUSTO TOTAL ({form.quantity}x)</span>
                   <span className="font-bold text-white">R$ {result.subtotal.toFixed(2)}</span>
                 </div>
                 <CostRow label="Margem de Lucro" value={result.marginValue} color="text-green-500" />
+                {form.useV2 && <CostRow label="Imposto" value={result.taxValue} color="text-red-500" />}
                 <CostRow label="Taxa Marketplace" value={result.platformFeeValue} color="text-red-500" />
                 <CostRow label="Desconto" value={result.discountValue} color="text-red-500" />
               </div>
