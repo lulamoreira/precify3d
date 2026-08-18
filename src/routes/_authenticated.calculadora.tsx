@@ -449,31 +449,37 @@ function CalculatorPage() {
 
   const addItem = () => {
     if (!result) return;
+    const qty = Math.max(1, parseInt(form.totalPieces) || 1);
     const newItem = {
       name: form.project || 'Peça sem nome',
       description: `Material: ${currentMat?.name || 'Não definido'}`,
-      quantity: Number(form.quantity),
+      quantity: qty,
       material_name: currentMat?.name,
       weight_g: Number(form.weightG),
-      time_hours: (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
-      unit_price: result.finalPriceUnit || result.finalPrice / Number(form.quantity),
+      time_hours: batchResult ? batchResult.horasPorPeca : (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
+      unit_price: result.finalPriceUnit || result.finalPrice / qty,
       total_price: result.finalPrice,
-      cost_direct: result.subtotal / Number(form.quantity),
-      profit: result.profitUnit || result.profit / Number(form.quantity),
+      cost_direct: result.subtotal / qty,
+      profit: result.profitUnit || result.profit / qty,
       stl_path: currentFileMetadata?.path,
       stl_filename: currentFileMetadata?.filename,
       stl_size_bytes: currentFileMetadata?.size,
       stl_hash: currentFileMetadata?.hash,
-      batch_size: batchMode && parseInt(form.quantity) > 1 ? parseInt(form.quantity) : null,
-      batch_mode: batchMode && parseInt(form.quantity) > 1 ? batchPrintMode : null,
-      plate_capacity: batchResult?.totalPlates || null,
-      plates_count: batchResult?.totalPlates || null,
-      time_per_plate: batchResult?.mesaCheiaResult?.tempo || null,
-      unit_time_hours: batchResult?.totalTime ? batchResult.totalTime / parseInt(form.quantity) : (Number(form.h) || 0) + (Number(form.m) || 0) / 60
+      
+      // V3 Persistence
+      pieces_per_plate: batchResult ? parseInt(form.piecesPerPlate) : null,
+      total_pieces: qty,
+      plate_time_hours: batchResult ? (parseInt(form.plateTimeH) || 0) + (parseInt(form.plateTimeM) || 0) / 60 : null,
+      single_time_hours: batchResult && (form.singleTimeH || form.singleTimeM) ? (parseInt(form.singleTimeH) || 0) + (parseInt(form.singleTimeM) || 0) / 60 : null,
+      partial_plate_hours: batchResult?.horasParcial || null,
+      total_print_hours: batchResult?.horasTotal || (Number(form.h) || 0) + (Number(form.m) || 0) / 60,
+      time_source: batchResult ? 'informado' : (stlData ? 'estimado' : 'informado'),
+      weight_input_mode: form.weightInputMode
     };
     setItems([...items, newItem]);
     toast.success('Peça adicionada ao orçamento!');
   };
+
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
