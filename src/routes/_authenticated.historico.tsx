@@ -185,25 +185,61 @@ function HistoryPage() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
+      {unclassifiedCount > 0 && showUnclassifiedBanner && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500/20 rounded-full text-amber-500">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <p className="font-bold text-amber-500">Registros Pendentes</p>
+              <p className="text-xs text-amber-500/80">
+                Você tem {unclassifiedCount} registros salvos antes da atualização. Eles estão fora do faturamento até você classificar.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg px-4" onClick={() => toast.info('Funcionalidade de classificação em massa em breve!')}>
+              Classificar agora
+            </Button>
+            <Button size="sm" variant="ghost" className="text-amber-500 hover:bg-amber-500/10" onClick={() => setShowUnclassifiedBanner(false)}>
+              Dispensar
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">Histórico</h1>
           <p className="text-gray-400">Gerencie todos os seus orçamentos salvos.</p>
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <Input 
-              placeholder="Buscar por cliente, peça..." 
-              className="pl-10 bg-[#111128] border-[#22223a]"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+        <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+          <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full md:w-auto">
+            <TabsList className="bg-[#111128] border border-[#22223a]">
+              <TabsTrigger value="todos">Todos</TabsTrigger>
+              <TabsTrigger value="simulacoes">Simulações</TabsTrigger>
+              <TabsTrigger value="aberto">Em aberto</TabsTrigger>
+              <TabsTrigger value="vendas">Vendas</TabsTrigger>
+              <TabsTrigger value="perdidos">Perdidos</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+              <Input 
+                placeholder="Buscar por cliente, peça..." 
+                className="pl-10 bg-[#111128] border-[#22223a]"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <Button variant="outline" className="border-[#22223a] hover:bg-[#22223a] gap-2 rounded-xl" onClick={exportCSV}>
+              <Download size={18} />
+              Exportar CSV
+            </Button>
           </div>
-          <Button variant="outline" className="border-[#22223a] hover:bg-[#22223a] gap-2 rounded-xl" onClick={exportCSV}>
-            <Download size={18} />
-            Exportar CSV
-          </Button>
         </div>
       </div>
 
