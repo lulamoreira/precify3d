@@ -1,12 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getPlans } from '@/lib/quota.functions';
+import { createCheckoutSession } from '@/lib/stripe.functions';
 import { useServerFn } from '@tanstack/react-start';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, Zap, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Check, Zap, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/_authenticated/planos' as any)({
   component: PlansPage,
