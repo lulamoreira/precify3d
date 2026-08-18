@@ -89,12 +89,12 @@ function CalculatorPage() {
           stlData, 
           density, 
           infill, 
-          settings.walls, 
-          settings.layer_height, 
-          settings.nozzle_width
+          settings.walls || 3, 
+          settings.layer_height || 0.2, 
+          settings.nozzle_width || 0.4
         );
         
-        const time = estimateTimeHours(stlData.volCm3, settings.volumetric_rate, settings.time_calibration);
+        const time = estimateTimeHours(stlData.volCm3, settings.volumetric_rate || 8, settings.time_calibration || 1.0);
         const h = Math.floor(time);
         const m = Math.round((time - h) * 60);
         setForm(f => ({ ...f, weightG: weight.toString(), h: h.toString(), m: m.toString() }));
