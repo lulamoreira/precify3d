@@ -35,42 +35,65 @@ export function calcWeightFromSTL(volCm3: number, density: number, infillPct: nu
   return parseFloat(weight.toFixed(1));
 }
 
-/**
- * V2 Weight Estimation
- * Considers shell (walls) and infill separately based on surface area and volume
- */
-export function estimateWeightV2(data: STLData, density: number, infillPct: number, walls: number = 3, layerHeight: number = 0.2, nozzleWidth: number = 0.4): number {
-  const areaMm2 = data.areaCm2 * 100;
-  const volMm3 = data.volCm3 * 1000;
-  
-  // Shell volume estimate: Area * Wall thickness
-  const wallThickness = walls * nozzleWidth;
-  const shellVol = areaMm2 * wallThickness;
-  
-  // Remaining internal volume for infill
-  const internalVol = Math.max(0, volMm3 - shellVol);
-  const infillVol = internalVol * (infillPct / 100);
-  
-  // Total volume in cm3
-  const totalVolCm3 = (shellVol + infillVol) / 1000;
-  
-  // Add 5% for supports if hasOH is true
-  const multiplier = data.hasOH ? 1.05 : 1.0;
-  
-  return parseFloat((totalVolCm3 * density * multiplier).toFixed(1));
+export function layerCount(dimZ: number, layerHeight: number): number {
+  return Math.max(1, Math.ceil(dimZ / layerHeight));
 }
 
 /**
- * V2 Time Estimation
+ * V2 Weight Estimation (0.4 CORREÇÃO: Clamp em shellVol e retorno de objeto)
+ */
+export function estimateWeightV2(data: STLData, density: number, infillPct: number, walls: number = 3, layerHeight: number = 0.2, nozzleWidth: number = 0.4): { pesoG: number, pesoSuporteG: number, volumeExtrudadoMm3: number } {
+  const areaMm2 = data.areaCm2 * 100;
+  const volMm3 = data.volCm3 * 1000;
+  
+  // Shell volume estimate: Area * Wall thickness com CLAMP (0.4)
+  const wallThickness = walls * nozzleWidth;
+  const shellVol = Math.min(areaMm2 * wallThickness, volMm3 * 0.95);
+  
+  // Remaining internal volume for infill
+  const internalVol = Math.max(0, volMm3 - shellVol);
+  const volumeExtrudadoMm3 = shellVol + internalVol * (infillPct / 100);
+  
+  // Total weight in grams
+  const pesoG = (volumeExtrudadoMm3 / 1000) * density;
+  
+  // Add weight for supports (0.4 CORREÇÃO: pesoSuporteG separado)
+  const volumeSuporteMm3 = data.hasOH ? volMm3 * 0.10 * 0.15 : 0;
+  const pesoSuporteG = (volumeSuporteMm3 / 1000) * density;
+  
+  return { 
+    pesoG: parseFloat(pesoG.toFixed(1)), 
+    pesoSuporteG: parseFloat(pesoSuporteG.toFixed(1)),
+    volumeExtrudadoMm3: parseFloat(volumeExtrudadoMm3.toFixed(1))
+  };
+}
+
+/**
+ * V2 Time Estimation (0.3 CORREÇÃO: Considera altura dimZ)
  * Based on volumetric flow rate (mm3/s)
  */
-export function estimateTimeHours(volCm3: number, volumetricRateMm3s: number = 8, calibration: number = 1.0): number {
-  if (volumetricRateMm3s <= 0) return 0;
-  const volMm3 = volCm3 * 1000;
-  const seconds = (volMm3 / volumetricRateMm3s) * calibration;
-  // Add 20% for travel time and layer changes
-  const adjustedSeconds = seconds * 1.2;
-  return parseFloat((adjustedSeconds / 3600).toFixed(2));
+export function estimateTimeHours({ 
+  volumeExtrudadoMm3, 
+  dimZ, 
+  layerHeight = 0.2, 
+  volumetricRate = 8, 
+  calibration = 1.0 
+}: {
+  volumeExtrudadoMm3: number;
+  dimZ: number;
+  layerHeight?: number;
+  volumetricRate?: number;
+  calibration?: number;
+}): number {
+  if (volumetricRate <= 0 || layerHeight <= 0) return 0;
+  
+  const tempoExtrusaoS = volumeExtrudadoMm3 / volumetricRate;
+  const numCamadas = layerCount(dimZ, layerHeight);
+  const tempoCamadasS = numCamadas * 4; // troca de camada + deslocamento
+  const aquecimentoS = 240; // uma vez por impressão
+  
+  const horas = ((tempoExtrusaoS + tempoCamadasS + aquecimentoS) / 3600) * calibration;
+  return parseFloat(horas.toFixed(2));
 }
 
 export function parseSTLBuffer(buffer: ArrayBuffer): { n: number[]; v1: number[]; v2: number[]; v3: number[] }[] {

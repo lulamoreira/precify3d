@@ -104,49 +104,52 @@ export function calculatePricingV2(input: PricingInput): PricingResult {
     postProcessingPriceHour = 0, postProcessingMinutes = 0
   } = input;
 
-  // 1. Direct Costs (Variable)
-  const weightEff = weightG * (1 + failurePct / 100);
+  // 1. Direct Costs (Variable) com fator de falha aplicado a energia e máquina (0.2)
+  const riskFactor = (1 + failurePct / 100);
+  const weightEff = weightG * riskFactor;
   const costMaterial = (weightEff / 1000) * materialPricePerKg;
-  const costEnergy = (printerWatts / 1000) * timeHours * kwhPrice;
-  const costMachine = timeHours * machinePricePerHour;
+  const costEnergy = ((printerWatts / 1000) * timeHours * kwhPrice) * riskFactor;
+  const costMachine = (timeHours * machinePricePerHour) * riskFactor;
   
-  // 2. Labor Costs
+  // 2. Labor Costs (Não aplica falha no pós-processamento)
   const costLabor = timeHours * laborPricePerHour;
   const costSetup = (setupMinutes / 60) * laborPricePerHour;
   const costPost = (postProcessingMinutes / 60) * postProcessingPriceHour;
   
   // 3. Base Cost per Unit
   const totalBaseCost = (costMaterial + costEnergy + costMachine + costLabor + costPost + packagingPrice) * quantity + costSetup;
-  const baseCostPerUnit = totalBaseCost / quantity;
 
   /**
-   * 4. Gross-up Calculation
-   * Formula: FinalPrice = BaseCost * (1 + Margin) / (1 - Tax - PlatformFee - Discount)
-   * We want the margin to be over the base cost, but taxes/fees over fixed final price.
+   * 4. Gross-up Calculation (0.1 CORREÇÃO: Desconto fora do divisor)
+   * Formula: FinalPrice = (BaseCost * (1 + Margin) * (1 - Discount)) / (1 - Tax - PlatformFee)
    */
-  const markup = 1 + (marginPct / 100);
-  const divisors = 1 - (taxPct / 100) - (platformFeePct / 100) - (discountPct / 100);
+  const precoTabela = totalBaseCost * (1 + marginPct / 100);
+  const precoComDesconto = precoTabela * (1 - discountPct / 100);
   
-  // Safety check to avoid division by zero or negative price
-  const activeDivisors = divisors > 0.1 ? divisors : 0.1;
+  const divisor = 1 - (taxPct / 100) - (platformFeePct / 100);
   
-  const finalPrice = (totalBaseCost * markup) / activeDivisors;
+  // Safety check
+  if (divisor <= 0.05) {
+    throw new Error('Taxa + imposto somam 95% ou mais');
+  }
+  
+  const finalPrice = precoComDesconto / divisor;
   const finalPriceUnit = finalPrice / quantity;
 
   // 5. Deductions from Final Price
+  const discountValue = precoTabela - precoComDesconto;
   const taxValue = finalPrice * (taxPct / 100);
   const platformFeeValue = finalPrice * (platformFeePct / 100);
-  const discountValue = finalPrice * (discountPct / 100);
   
   // 6. Final Results
-  const profit = finalPrice - totalBaseCost - taxValue - platformFeeValue - discountValue;
+  const profit = finalPrice - totalBaseCost - taxValue - platformFeeValue;
   const profitUnit = profit / quantity;
   
   // Real Margin: Profit / Final Price
   const realMarginPct = finalPrice > 0 ? (profit / finalPrice) * 100 : 0;
   
-  // Break Even: BaseCost / (1 - Tax - Fee)
-  const breakEvenPrice = totalBaseCost / (1 - (taxPct / 100) - (platformFeePct / 100));
+  // Break Even: BaseCost / Divisor
+  const breakEvenPrice = totalBaseCost / divisor;
 
   return {
     costMaterial: costMaterial * quantity,
@@ -158,7 +161,7 @@ export function calculatePricingV2(input: PricingInput): PricingResult {
     subtotal: totalBaseCost,
     taxValue,
     platformFeeValue,
-    marginValue: finalPrice - totalBaseCost - taxValue - platformFeeValue, 
+    marginValue: precoTabela - totalBaseCost, 
     discountValue,
     finalPrice,
     finalPriceUnit,

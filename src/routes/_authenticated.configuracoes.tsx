@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package, Calculator, Gauge, ShieldCheck } from 'lucide-react';
+import { Zap, DollarSign, Trash2, Plus, Info, CheckCircle2, Loader2, Package, Calculator, Gauge, ShieldCheck, Maximize, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useServerFn } from '@tanstack/react-start';
 
 
@@ -38,6 +40,14 @@ function SettingsPage() {
   const [form, setForm] = useState<any>(null);
   const [newMaterial, setNewMaterial] = useState({ name: '', price_per_kg: '', color: '#f97316' });
 
+  const printerPresets = [
+    { name: 'Bambu A1 mini', x: 180, y: 180, z: 180 },
+    { name: 'Bambu A1-P1S-X1C', x: 256, y: 256, z: 256 },
+    { name: 'Ender 3', x: 220, y: 220, z: 250 },
+    { name: 'Prusa MK4', x: 250, y: 210, z: 220 },
+    { name: 'Personalizado', x: 200, y: 200, z: 200 }
+  ];
+
   useEffect(() => {
     if (settings) {
       setForm({
@@ -51,10 +61,29 @@ function SettingsPage() {
         walls: settings.walls?.toString() || '3',
         volumetric_rate: settings.volumetric_rate?.toString() || '8.0',
         time_calibration: settings.time_calibration?.toString() || '1.0',
-        store_files: settings.store_files ?? true
+        store_files: settings.store_files ?? true,
+        bed_x: settings.bed_x || 256,
+        bed_y: settings.bed_y || 256,
+        bed_z: settings.bed_z || 256,
+        plate_margin: settings.plate_margin || 5,
+        part_gap: settings.part_gap || 8,
+        batch_travel_seconds: settings.batch_travel_seconds || 2,
+        plate_waste_g: settings.plate_waste_g || 5,
+        batch_kills_plate: settings.batch_kills_plate ?? true,
+        batch_loss_factor: settings.batch_loss_factor || 0.6
       });
     }
   }, [settings]);
+
+  const applyPreset = (preset: any) => {
+    if (preset.name === 'Personalizado') return;
+    setForm({
+      ...form,
+      bed_x: preset.x,
+      bed_y: preset.y,
+      bed_z: preset.z
+    });
+  };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
     e.preventDefault();
