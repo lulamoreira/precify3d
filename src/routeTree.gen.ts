@@ -27,6 +27,7 @@ import { Route as AuthenticatedOrcamentosIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminUsuariosRouteImport } from './routes/_authenticated.admin.usuarios'
 import { Route as AuthenticatedAdminTarifasRouteImport } from './routes/_authenticated.admin.tarifas'
 import { Route as AuthenticatedAdminPresetsRouteImport } from './routes/_authenticated.admin.presets'
+import { Route as AuthenticatedAdminPlanosRouteImport } from './routes/_authenticated.admin.planos'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -123,6 +124,12 @@ const AuthenticatedAdminPresetsRoute =
     path: '/presets',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPlanosRoute =
+  AuthenticatedAdminPlanosRouteImport.update({
+    id: '/planos',
+    path: '/planos',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/o/$token': typeof OTokenRoute
+  '/admin/planos': typeof AuthenticatedAdminPlanosRoute
   '/admin/presets': typeof AuthenticatedAdminPresetsRoute
   '/admin/tarifas': typeof AuthenticatedAdminTarifasRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
@@ -154,6 +162,7 @@ export interface FileRoutesByTo {
   '/auth/signup': typeof AuthSignupRoute
   '/o/$token': typeof OTokenRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/planos': typeof AuthenticatedAdminPlanosRoute
   '/admin/presets': typeof AuthenticatedAdminPresetsRoute
   '/admin/tarifas': typeof AuthenticatedAdminTarifasRoute
   '/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
@@ -175,6 +184,7 @@ export interface FileRoutesById {
   '/auth/signup': typeof AuthSignupRoute
   '/o/$token': typeof OTokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/planos': typeof AuthenticatedAdminPlanosRoute
   '/_authenticated/admin/presets': typeof AuthenticatedAdminPresetsRoute
   '/_authenticated/admin/tarifas': typeof AuthenticatedAdminTarifasRoute
   '/_authenticated/admin/usuarios': typeof AuthenticatedAdminUsuariosRoute
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/signup'
     | '/o/$token'
+    | '/admin/planos'
     | '/admin/presets'
     | '/admin/tarifas'
     | '/admin/usuarios'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/o/$token'
     | '/'
+    | '/admin/planos'
     | '/admin/presets'
     | '/admin/tarifas'
     | '/admin/usuarios'
@@ -234,6 +246,7 @@ export interface FileRouteTypes {
     | '/auth/signup'
     | '/o/$token'
     | '/_authenticated/'
+    | '/_authenticated/admin/planos'
     | '/_authenticated/admin/presets'
     | '/_authenticated/admin/tarifas'
     | '/_authenticated/admin/usuarios'
@@ -378,10 +391,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPresetsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/planos': {
+      id: '/_authenticated/admin/planos'
+      path: '/planos'
+      fullPath: '/admin/planos'
+      preLoaderRoute: typeof AuthenticatedAdminPlanosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminPlanosRoute: typeof AuthenticatedAdminPlanosRoute
   AuthenticatedAdminPresetsRoute: typeof AuthenticatedAdminPresetsRoute
   AuthenticatedAdminTarifasRoute: typeof AuthenticatedAdminTarifasRoute
   AuthenticatedAdminUsuariosRoute: typeof AuthenticatedAdminUsuariosRoute
@@ -389,6 +410,7 @@ interface AuthenticatedAdminRouteChildren {
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminPlanosRoute: AuthenticatedAdminPlanosRoute,
   AuthenticatedAdminPresetsRoute: AuthenticatedAdminPresetsRoute,
   AuthenticatedAdminTarifasRoute: AuthenticatedAdminTarifasRoute,
   AuthenticatedAdminUsuariosRoute: AuthenticatedAdminUsuariosRoute,

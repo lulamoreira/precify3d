@@ -21,7 +21,13 @@ function PlansPage() {
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ['plans'],
-    queryFn: () => getPlansFn(),
+    queryFn: async () => {
+      const allPlans = await getPlansFn();
+      // Filtrar apenas ativos e ordenar (Parte F)
+      return (allPlans || [])
+        .filter((p: any) => p.active)
+        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+    },
   });
 
   const checkoutMutation = useMutation({
