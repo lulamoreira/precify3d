@@ -39,6 +39,18 @@ function AdminLayout() {
             Usuários
           </Link>
           <Link 
+            to={"/admin/planos" as any} 
+            className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
+          >
+            Planos
+          </Link>
+          <Link 
+            to={"/admin/cupons" as any} 
+            className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
+          >
+            Cupons
+          </Link>
+          <Link 
             to={"/admin/presets" as any} 
             className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
           >

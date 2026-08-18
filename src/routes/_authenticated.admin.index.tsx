@@ -15,6 +15,36 @@ function AdminDashboard() {
     queryKey: ['adminStats'],
     queryFn: async () => {
       const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      
+      // Receita Estimada por Plano (Parte E)
+      const { data: plans } = await supabase.from('plans').select('*, subscriptions(stripe_price_id, billing_period)');
+      const { data: history } = await supabase.from('plan_price_history').select('*');
+
+      const planStats = (plans || []).map(plan => {
+        const activeSubs = (plan.subscriptions || []).length;
+        
+        // Estimar receita somando os preços reais das assinaturas
+        let estimatedMRR = 0;
+        (plan.subscriptions || []).forEach((sub: any) => {
+          // Busca o preço histórico se o price_id bater, senão usa o atual
+          const histPrice = history?.find(h => h.plan_id === plan.id && (h.stripe_price_month_id === sub.stripe_price_id || h.stripe_price_year_id === sub.stripe_price_id));
+          
+          let price = 0;
+          if (histPrice) {
+            price = sub.billing_period === 'month' ? histPrice.price_month : (histPrice.price_year / 12);
+          } else {
+            price = sub.billing_period === 'month' ? plan.price_month : (plan.price_year / 12);
+          }
+          estimatedMRR += price;
+        });
+
+        return {
+          ...plan,
+          activeSubs,
+          estimatedMRR
+        };
+      });
+
       const { data: recentCredits } = await supabase
         .from('usage_events')
         .select('*, profiles(full_name, email)')
@@ -23,14 +53,15 @@ function AdminDashboard() {
       
       return {
         userCount: userCount || 0,
-        recentCredits: recentCredits || []
+        recentCredits: recentCredits || [],
+        planStats
       };
     }
   });
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-[#111128] border-[#22223a] text-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">Total de Usuários</CardTitle>
@@ -40,6 +71,19 @@ function AdminDashboard() {
             <div className="text-2xl font-bold">{stats?.userCount}</div>
           </CardContent>
         </Card>
+        
+        {stats?.planStats?.filter((p: any) => !p.is_free).map((plan: any) => (
+          <Card key={plan.id} className="bg-[#111128] border-[#22223a] text-white">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">MRR {plan.name}</CardTitle>
+              <CreditCard className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">R$ {plan.estimatedMRR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+              <p className="text-[10px] text-gray-500 mt-1">{plan.activeSubs} assinantes ativos</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card className="bg-[#111128] border-[#22223a] text-white">
