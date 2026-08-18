@@ -182,8 +182,8 @@ export const updateProfile = createServerFn({ method: "POST" })
 
 export const getPrinterPresets = createServerFn({ method: "GET" })
   .handler(async () => {
-    const { supabase } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
       .from("printer_presets")
       .select("*")
       .eq("active", true)
@@ -196,8 +196,8 @@ export const getPrinterPresets = createServerFn({ method: "GET" })
 
 export const getEnergyTariffs = createServerFn({ method: "GET" })
   .handler(async () => {
-    const { supabase } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
       .from("energy_tariffs")
       .select("*")
       .eq("active", true)
@@ -206,5 +206,6 @@ export const getEnergyTariffs = createServerFn({ method: "GET" })
     if (error) throw error;
     return data;
   });
+
 
 
