@@ -136,7 +136,18 @@ function SettingsPage() {
     }
   };
 
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const saved = localStorage.getItem('dismissed_alerts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dismissed_alerts', JSON.stringify(dismissedAlerts));
+  }, [dismissedAlerts]);
+
   if (loadingSettings || !form) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-[#f97316]" size={48} /></div>;
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-12">
@@ -405,6 +416,23 @@ function SettingsPage() {
                       <Input type="number" value={form.bed_z} onChange={e => setForm({...form, bed_z: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Desperdício por placa (g)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle size={12} className="text-gray-500 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">Skirt, brim e purga por placa. Uma cor: 3 a 8g. Multicor: veja no seu slicer, pode passar de 50g.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <Input type="number" value={form.plate_waste_g} onChange={e => setForm({...form, plate_waste_g: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
