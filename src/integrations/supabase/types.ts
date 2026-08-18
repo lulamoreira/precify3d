@@ -107,6 +107,8 @@ export type Database = {
           final_price: number
           id: string
           infill_pct: number | null
+          kind: string
+          lost_reason: string | null
           margin_pct: number
           margin_value: number
           material_name: string
@@ -118,7 +120,12 @@ export type Database = {
           profit: number
           project: string | null
           quantity: number | null
+          sold_at: string | null
+          sold_price: number | null
+          sold_profit: number | null
           source: string | null
+          status: string
+          status_changed_at: string | null
           stl_area_cm2: number | null
           stl_volume_cm3: number | null
           subtotal: number
@@ -148,6 +155,8 @@ export type Database = {
           final_price: number
           id?: string
           infill_pct?: number | null
+          kind?: string
+          lost_reason?: string | null
           margin_pct: number
           margin_value: number
           material_name: string
@@ -159,7 +168,12 @@ export type Database = {
           profit: number
           project?: string | null
           quantity?: number | null
+          sold_at?: string | null
+          sold_price?: number | null
+          sold_profit?: number | null
           source?: string | null
+          status?: string
+          status_changed_at?: string | null
           stl_area_cm2?: number | null
           stl_volume_cm3?: number | null
           subtotal: number
@@ -189,6 +203,8 @@ export type Database = {
           final_price?: number
           id?: string
           infill_pct?: number | null
+          kind?: string
+          lost_reason?: string | null
           margin_pct?: number
           margin_value?: number
           material_name?: string
@@ -200,7 +216,12 @@ export type Database = {
           profit?: number
           project?: string | null
           quantity?: number | null
+          sold_at?: string | null
+          sold_price?: number | null
+          sold_profit?: number | null
           source?: string | null
+          status?: string
+          status_changed_at?: string | null
           stl_area_cm2?: number | null
           stl_volume_cm3?: number | null
           subtotal?: number

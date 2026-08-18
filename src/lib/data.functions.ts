@@ -118,6 +118,25 @@ export const deleteQuote = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const updateQuoteStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { id: string, status: string, sold_price?: number, sold_profit?: number, sold_at?: string, lost_reason?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { id, ...updateData } = data;
+    const { error } = await supabase
+      .from("quotes")
+      .update({ 
+        ...updateData, 
+        status_changed_at: new Date().toISOString() 
+      })
+      .eq("id", id)
+      .eq("user_id", userId);
+    
+    if (error) throw error;
+    return { success: true };
+  });
+
 export const getProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
