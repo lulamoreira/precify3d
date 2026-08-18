@@ -333,10 +333,12 @@ function CalculatorPage() {
   }, [
     form.weightG,
     infill,
-    form.quantity,
+    form.totalPieces,
+    form.piecesPerPlate,
     form.useV2,
     batchMode,
     currentMat
+
   ]);
 
 
