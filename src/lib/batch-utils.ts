@@ -33,7 +33,6 @@ export function plateCapacity({
 
   if (usableX <= 0 || usableY <= 0) return { fits: false, motivo: 'area', capacidade: 0, rotacionado: false };
 
-  // Usando (usable + gap) / (dim + gap) para considerar que a última peça não precisa de gap
   const capA_X = Math.floor((usableX + gap) / (dimX + gap));
   const capA_Y = Math.floor((usableY + gap) / (dimY + gap));
   const capA = Math.max(0, capA_X * capA_Y);
@@ -87,6 +86,103 @@ export function plateTimeHours({
   return ((s / 3600) * calibracao);
 }
 
+export interface BatchTimeInfo {
+  fixo: number;
+  variavel: number;
+  exato: boolean;
+  aviso?: string;
+}
+
+/**
+ * PARTE B.1 - splitPlateTime
+ * Separa o tempo da placa em parte FIXA e VARIÁVEL
+ */
+export function splitPlateTime({ 
+  plateHours, 
+  piecesPerPlate, 
+  singleHours, 
+  fixedShare 
+}: {
+  plateHours: number;
+  piecesPerPlate: number;
+  singleHours?: number;
+  fixedShare: number;
+}): BatchTimeInfo {
+  if (piecesPerPlate <= 1) {
+    return { fixo: plateHours, variavel: 0, exato: true };
+  }
+
+  // Caso (a): Cálculo EXATO se singleHours informado e coerente
+  if (singleHours && singleHours > 0 && piecesPerPlate > 1) {
+    const variavel = (plateHours - singleHours) / (piecesPerPlate - 1);
+    const fixo = singleHours - variavel;
+
+    if (fixo >= 0 && variavel > 0) {
+      return { fixo, variavel, exato: true };
+    }
+    
+    // Fallback se incoerente
+    const fall = splitPlateTime({ plateHours, piecesPerPlate, fixedShare });
+    return { 
+      ...fall, 
+      aviso: "Os tempos informados não batem — conferindo pelo modo aproximado" 
+    };
+  }
+
+  // Caso (b): APROXIMADO
+  const fixo = plateHours * (fixedShare || 0.15);
+  const variavel = (plateHours - fixo) / piecesPerPlate;
+  return { fixo, variavel, exato: false };
+}
+
+/**
+ * PARTE B.2 - plateTimeFor(k) = fixo + k * variavel
+ */
+export function plateTimeFor(k: number, { fixo, variavel }: { fixo: number, variavel: number }): number {
+  if (k <= 0) return 0;
+  return fixo + k * variavel;
+}
+
+/**
+ * PARTE B.3 - batchPlan
+ */
+export function batchPlan({ 
+  totalPieces, 
+  piecesPerPlate, 
+  plateHours, 
+  singleHours,
+  fixedShare 
+}: {
+  totalPieces: number;
+  piecesPerPlate: number;
+  plateHours: number;
+  singleHours?: number;
+  fixedShare: number;
+}) {
+  const n = Math.max(1, piecesPerPlate);
+  const total = Math.max(1, totalPieces);
+  
+  const placasCheias = Math.floor(total / n);
+  const resto = total % n;
+  const placasTotal = placasCheias + (resto > 0 ? 1 : 0);
+  
+  const timeInfo = splitPlateTime({ plateHours, piecesPerPlate: n, singleHours, fixedShare });
+  
+  const horasParcial = resto > 0 ? plateTimeFor(resto, timeInfo) : 0;
+  const horasTotal = placasCheias * plateHours + horasParcial;
+  const horasPorPeca = total > 0 ? horasTotal / total : 0;
+
+  return {
+    placasCheias,
+    resto,
+    placasTotal,
+    horasParcial,
+    horasTotal,
+    horasPorPeca,
+    ...timeInfo
+  };
+}
+
 export function plateRisk({
   n,
   failurePct,
@@ -112,7 +208,7 @@ export function plateRisk({
 export function calcBatch(params: any) {
   const {
     quantidade,
-    n,
+    n, // pieces_per_plate
     modo,
     volumeExtrudadoMm3,
     pesoG,
@@ -127,38 +223,42 @@ export function calcBatch(params: any) {
     posMinutos,
     precoHoraPos,
     embalagem,
-    dimZ,
-    layerHeight,
-    volumetricRate,
-    travelSeg,
-    calibracao,
     failurePct,
     killsPlate,
     lossFactor,
     marginPct,
     discountPct,
     taxPct,
-    platformFeePct
+    platformFeePct,
+    
+    // V3 specific
+    plateTimeHoursInput,
+    singleTimeHoursInput,
+    fixedTimeShare,
+    weightInputMode // 'peca' | 'placa'
   } = params;
 
-  const mesasCheias = Math.floor(quantidade / n);
-  const resto = quantidade % n;
+  // Calculamos o plano de lote
+  const plan = batchPlan({
+    totalPieces: quantidade,
+    piecesPerPlate: n,
+    plateHours: plateTimeHoursInput,
+    singleHours: singleTimeHoursInput,
+    fixedShare: fixedTimeShare
+  });
+
+  // Peso unitário dependendo do modo de entrada
+  const unitWeightG = weightInputMode === 'placa' ? pesoG / n : pesoG;
+  const unitSupportG = weightInputMode === 'placa' ? pesoSuporteG / n : pesoSuporteG;
 
   const calculateMesa = (k: number) => {
     if (k <= 0) return { total: 0, tempo: 0, material: 0 };
     
-    const tempoMesa = plateTimeHours({
-      n: k,
-      volumeExtrudadoMm3,
-      dimZ,
-      layerHeight,
-      volumetricRate,
-      travelSeg: modo === 'simultaneo' ? travelSeg : 0,
-      calibracao,
-      modo
-    });
+    // Usamos plateTimeFor em vez da estimativa geométrica
+    const tempoMesa = plateTimeFor(k, plan);
 
-    const materialG = k * (pesoG + pesoSuporteG) + plateWasteG;
+    // Material da mesa: k peças + desperdício da placa
+    const materialG = k * (unitWeightG + unitSupportG) + plateWasteG;
     const custoMat = (materialG / 1000) * precoKg;
     const custoEnergia = (watts / 1000) * tempoMesa * precoKwh;
     const custoMaquina = tempoMesa * precoHoraMaquina;
@@ -180,17 +280,17 @@ export function calcBatch(params: any) {
       total: custoFinalMesa,
       tempo: tempoMesa,
       material: materialG,
-      baseCost: (custoMat + custoEnergia + custoMaquina + custoSetup + custoPos + k * embalagem) // para referência
+      baseCost: (custoMat + custoEnergia + custoMaquina + custoSetup + custoPos + k * embalagem)
     };
   };
 
   const mesaCheiaResult = calculateMesa(n);
-  const mesaRestoResult = calculateMesa(resto);
+  const mesaRestoResult = calculateMesa(plan.resto);
 
-  const totalBaseCost = (mesasCheias * mesaCheiaResult.total) + mesaRestoResult.total;
-  const totalTime = (mesasCheias * mesaCheiaResult.tempo) + mesaRestoResult.tempo;
+  const totalBaseCost = (plan.placasCheias * mesaCheiaResult.total) + mesaRestoResult.total;
+  const totalTime = plan.horasTotal;
   
-  // Gross-up logic corrected (Parte 0.1)
+  // Gross-up logic
   const precoTabela = totalBaseCost * (1 + marginPct / 100);
   const precoComDesconto = precoTabela * (1 - discountPct / 100);
   const divisor = Math.max(0.05, 1 - (taxPct / 100) - (platformFeePct / 100));
@@ -200,13 +300,13 @@ export function calcBatch(params: any) {
   const unitCost = totalBaseCost / quantidade;
 
   return {
+    ...plan,
     finalPrice,
     unitPrice,
     unitCost,
     totalTime,
-    mesasCheias,
-    resto,
-    totalPlates: mesasCheias + (resto > 0 ? 1 : 0),
+    mesasCheias: plan.placasCheias,
+    totalPlates: plan.placasTotal,
     mesaCheiaResult,
     mesaRestoResult
   };

@@ -70,7 +70,10 @@ function SettingsPage() {
         batch_travel_seconds: (settings as any).batch_travel_seconds || 2,
         plate_waste_g: (settings as any).plate_waste_g || 5,
         batch_kills_plate: (settings as any).batch_kills_plate ?? true,
-        batch_loss_factor: (settings as any).batch_loss_factor || 0.6
+        batch_loss_factor: (settings as any).batch_loss_factor || 0.6,
+        fixed_time_share: settings.fixed_time_share || 0.15,
+        hours_per_day: settings.hours_per_day || 20
+
       });
     }
   }, [settings]);
@@ -184,7 +187,7 @@ function SettingsPage() {
                     Padrões de Orçamento
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Margem (%)</Label>
                     <Input type="number" value={form.margin} onChange={e => setForm({...form, margin: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
@@ -201,7 +204,26 @@ function SettingsPage() {
                     <Label>Taxa Plataforma (%)</Label>
                     <Input type="number" step="0.01" value={form.platform_fee} onChange={e => setForm({...form, platform_fee: e.target.value})} className="bg-[#07071a] border-[#22223a]" />
                   </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label>Fração Tempo Fixo (0-1)</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info size={14} className="text-gray-400 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>Percentual do tempo de placa que é fixo (setup/aquecimento)</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <Input type="number" step="0.01" value={form.fixed_time_share} onChange={e => setForm({...form, fixed_time_share: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Horas/Dia de Impressão</Label>
+                    <Input type="number" value={form.hours_per_day} onChange={e => setForm({...form, hours_per_day: Number(e.target.value)})} className="bg-[#07071a] border-[#22223a]" />
+                  </div>
                 </CardContent>
+
               </Card>
             </div>
           </TabsContent>
