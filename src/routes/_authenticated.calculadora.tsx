@@ -225,7 +225,7 @@ function CalculatorPage() {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const handleSaveFull = () => {
+  const handleSaveFull = (kind: 'simulacao' | 'orcamento' = 'orcamento') => {
     if (items.length === 0) {
       toast.error('Adicione pelo menos uma peça ao orçamento.');
       return;
@@ -236,9 +236,9 @@ function CalculatorPage() {
     const finalPrice = subtotal + shipping;
 
     mutation.mutate({
-      title: form.title || `Orçamento - ${new Date().toLocaleDateString()}`,
+      title: form.title || `${kind === 'simulacao' ? 'Simulação' : 'Orçamento'} - ${new Date().toLocaleDateString()}`,
       client_id: form.clientId || null,
-      client: clients.find((c: any) => c.id === form.clientId)?.name || form.client,
+      client: clients.find((c: any) => c.id === form.clientId)?.name || form.client || 'Simulação Avulsa',
       project: items[0]?.name || 'Múltiplas peças',
       final_price: finalPrice,
       shipping_price: shipping,
@@ -246,7 +246,8 @@ function CalculatorPage() {
       delivery_days: Number(form.deliveryDays),
       payment_terms: form.paymentTerms,
       public_notes: form.publicNotes,
-      status: 'rascunho',
+      status: kind === 'simulacao' ? 'simulacao' : 'rascunho',
+      kind: kind,
       items: items
     });
   };
