@@ -363,6 +363,81 @@ function HistoryPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={saleModal.open} onOpenChange={(open) => !open && setSaleModal({ open: false, quote: null })}>
+        <DialogContent className="bg-[#111128] border-[#22223a] text-white">
+          <DialogHeader>
+            <DialogTitle>Confirmar Venda</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Registre os detalhes reais da negociação.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Valor Fechado (R$)</Label>
+              <Input 
+                type="number" 
+                value={saleForm.price} 
+                onChange={e => setSaleForm({...saleForm, price: e.target.value})}
+                className="bg-[#07071a] border-[#22223a]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Data da Venda</Label>
+              <Input 
+                type="date" 
+                value={saleForm.date} 
+                onChange={e => setSaleForm({...saleForm, date: e.target.value})}
+                className="bg-[#07071a] border-[#22223a]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-[#22223a]" onClick={() => setSaleModal({ open: false, quote: null })}>
+              Cancelar
+            </Button>
+            <Button className="bg-green-500 hover:bg-green-600" onClick={confirmSale}>
+              Confirmar Venda
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={lostModal.open} onOpenChange={(open) => !open && setLostModal({ open: false, quote: null })}>
+        <DialogContent className="bg-[#111128] border-[#22223a] text-white">
+          <DialogHeader>
+            <DialogTitle>Motivo da Perda</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Por que este orçamento não foi aprovado?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Motivo</Label>
+              <Select value={lostReason} onValueChange={setLostReason}>
+                <SelectTrigger className="bg-[#07071a] border-[#22223a]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111128] border-[#22223a] text-white">
+                  <SelectItem value="preco">Preço</SelectItem>
+                  <SelectItem value="prazo">Prazo</SelectItem>
+                  <SelectItem value="desistiu">Desistiu</SelectItem>
+                  <SelectItem value="sem_resposta">Sem resposta</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-[#22223a]" onClick={() => setLostModal({ open: false, quote: null })}>
+              Cancelar
+            </Button>
+            <Button className="bg-red-500 hover:bg-red-600" onClick={confirmLost}>
+              Salvar Motivo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
