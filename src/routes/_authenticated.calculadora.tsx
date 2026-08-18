@@ -10,11 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, type STLData } from '@/lib/stl-utils';
-import { calculatePricing, type PricingResult } from '@/lib/pricing-utils';
-import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon } from 'lucide-react';
+import { parseSTLBuffer, analyzeTriangles, calcWeightFromSTL, getMaterialDensity, parseGCode, estimateWeightV2, estimateTimeHours, type STLData } from '@/lib/stl-utils';
+import { calculatePricing, calculatePricingV2, type PricingResult } from '@/lib/pricing-utils';
+import { Upload, Zap, Info, ExternalLink, Package, ShoppingCart, Store, CheckCircle2, Loader2, Calculator as CalculatorIcon, Layers, Maximize, Clock, Percent, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import * as fflate from 'fflate';
 import { useServerFn } from '@tanstack/react-start';
 
 export const Route = createFileRoute('/_authenticated/calculadora')({
