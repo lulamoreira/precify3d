@@ -149,9 +149,9 @@ function HistoryPage() {
   const [showUnclassifiedBanner, setShowUnclassifiedBanner] = useState(true);
 
   const stats = {
-    vendasRealizadas: quotes?.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) || 0,
-    totalProfit: quotes?.filter(isVenda).reduce((acc, q) => acc + lucroVenda(q), 0) || 0,
-    averageTicket: quotes?.filter(isVenda).length ? (quotes.filter(isVenda).reduce((acc, q) => acc + valorVenda(q), 0) / quotes.filter(isVenda).length) : 0,
+    vendasRealizadas: quotes?.filter(isVenda).reduce((acc: number, q: any) => acc + valorVenda(q), 0) || 0,
+    totalProfit: quotes?.filter(isVenda).reduce((acc: number, q: any) => acc + lucroVenda(q), 0) || 0,
+    averageTicket: quotes?.filter(isVenda).length ? (quotes.filter(isVenda).reduce((acc: number, q: any) => acc + valorVenda(q), 0) / (quotes.filter(isVenda).length || 1)) : 0,
     totalQuotes: quotes?.length || 0,
   };
 
