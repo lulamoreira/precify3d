@@ -43,7 +43,13 @@ function CalculatorPage() {
     packaging: '',
     platformFee: '',
     platformName: 'none',
-    notes: ''
+    notes: '',
+    quantity: '1',
+    taxPct: '',
+    setupMinutes: '',
+    postProcessingPriceHour: '',
+    postProcessingMinutes: '',
+    useV2: false
   });
 
   const [stlData, setStlData] = useState<STLData | null>(null);
