@@ -126,6 +126,7 @@ function CalculatorPage() {
         );
         
         setVolumeExtrudadoMm3(weightObj.volumeExtrudadoMm3);
+        setPesoSuporteG(weightObj.pesoSuporteG);
         
         const time = estimateTimeHours({
           volumeExtrudadoMm3: weightObj.volumeExtrudadoMm3,
@@ -138,12 +139,135 @@ function CalculatorPage() {
         const h = Math.floor(time);
         const m = Math.round((time - h) * 60);
         setForm(f => ({ ...f, weightG: weightObj.pesoG.toString(), h: h.toString(), m: m.toString() }));
+
+        // Lógica de Capacidade da Mesa
+        const cap = plateCapacity({
+          dimX: stlData.dimX,
+          dimY: stlData.dimY,
+          dimZ: stlData.dimZ,
+          bedX: Number((settings as any).bed_x) || 256,
+          bedY: Number((settings as any).bed_y) || 256,
+          bedZ: Number((settings as any).bed_z) || 256,
+          margin: Number((settings as any).plate_margin) || 5,
+          gap: Number((settings as any).part_gap) || 8
+        });
+        
+        if (cap.fits) {
+          setPartsPerPlate(prev => prev > cap.capacidade ? cap.capacidade : (prev || cap.capacidade));
+        }
       } else {
         const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
         setForm(f => ({ ...f, weightG: weight.toString() }));
       }
     }
   }, [stlData, infill, density, form.useV2, settings]);
+
+  useEffect(() => {
+    if (form.useV2 && settings && stlData) {
+      const quantity = Math.max(1, parseInt(form.quantity) || 1);
+      const n = Math.max(1, partsPerPlate);
+      const isBatchActive = batchMode && quantity > 1;
+
+      if (isBatchActive) {
+        const batch = calcBatch({
+          quantidade: quantity,
+          n: n,
+          modo: batchPrintMode,
+          volumeExtrudadoMm3,
+          pesoG: parseFloat(form.weightG) || 0,
+          pesoSuporteG,
+          plateWasteG: Number((settings as any).plate_waste_g) || 5,
+          precoKg: currentMat?.price_per_kg || 100,
+          watts: settings.watt,
+          precoKwh: settings.kwh,
+          precoHoraMaquina: settings.machine,
+          setupMinutes: Number(form.setupMinutes) || 0,
+          precoHoraMaoObra: settings.labor,
+          posMinutos: Number(form.postProcessingMinutes) || 0,
+          precoHoraPos: Number(form.postProcessingPriceHour) || 0,
+          embalagem: Number(form.packaging) || 0,
+          dimZ: stlData.dimZ,
+          layerHeight: settings.layer_height || 0.2,
+          volumetricRate: settings.volumetric_rate || 8,
+          travelSeg: Number((settings as any).batch_travel_seconds) || 2,
+          calibracao: settings.time_calibration || 1.0,
+          failurePct: Number(form.failurePct) || 0,
+          killsPlate: (settings as any).batch_kills_plate ?? true,
+          lossFactor: (settings as any).batch_loss_factor || 0.6,
+          marginPct: Number(form.marginPct) || 0,
+          discountPct: Number(form.discountPct) || 0,
+          taxPct: Number(form.taxPct) || 0,
+          platformFeePct: Number(form.platformFee) || 0
+        });
+        setBatchResult(batch);
+        setResult({
+          costMaterial: (batch.unitCost * quantity) / 100 * 40, // Mock for structure
+          costEnergy: 0,
+          costMachine: 0,
+          costPost: 0,
+          totalBaseCost: batch.unitCost * quantity,
+          precoTabela: (batch.unitPrice * quantity) / (1 - Number(form.discountPct)/100),
+          precoComDesconto: batch.unitPrice * quantity,
+          finalPrice: batch.finalPrice,
+          profit: batch.finalPrice - (batch.unitCost * quantity),
+          taxValue: 0,
+          platformFeeValue: 0,
+          breakEvenPrice: batch.unitCost * quantity
+        } as any);
+      } else {
+        const res = calculatePricingV2({
+          weightG: parseFloat(form.weightG) || 0,
+          timeHours: (parseInt(form.h) || 0) + (parseInt(form.m) || 0) / 60,
+          materialPricePerKg: currentMat?.price_per_kg || 100,
+          printerWatts: settings.watt,
+          kwhPrice: settings.kwh,
+          machinePricePerHour: settings.machine,
+          laborPricePerHour: settings.labor,
+          setupMinutes: parseInt(form.setupMinutes) || 0,
+          postProcessingPriceHour: parseInt(form.postProcessingPriceHour) || 0,
+          postProcessingMinutes: parseInt(form.postProcessingMinutes) || 0,
+          packagingCost: parseInt(form.packaging) || 0,
+          marginPct: parseInt(form.marginPct) || 0,
+          taxPct: parseInt(form.taxPct) || 0,
+          platformFeePct: parseInt(form.platformFee) || 0,
+          discountPct: parseInt(form.discountPct) || 0,
+          failurePct: parseInt(form.failurePct) || 0,
+        });
+        setResult(res);
+        setBatchResult(null);
+      }
+    } else if (!form.useV2) {
+      const res = calculatePricing({
+        weightG: parseFloat(form.weightG) || 0,
+        materialPricePerKg: currentMat?.price_per_kg || 100,
+        marginPct: parseInt(form.marginPct) || 0,
+      });
+      setResult(res as any);
+      setBatchResult(null);
+    }
+  }, [
+    form.quantity, 
+    form.weightG, 
+    form.h, 
+    form.m, 
+    form.failurePct, 
+    form.marginPct, 
+    form.discountPct, 
+    form.taxPct, 
+    form.setupMinutes, 
+    form.postProcessingMinutes, 
+    form.postProcessingPriceHour, 
+    form.packaging, 
+    form.platformFee, 
+    form.useV2, 
+    settings, 
+    stlData, 
+    batchMode, 
+    batchPrintMode, 
+    partsPerPlate,
+    volumeExtrudadoMm3,
+    pesoSuporteG
+  ]);
 
   const handleFile = async (file: File) => {
     const ext = file.name.toLowerCase().split('.').pop();
