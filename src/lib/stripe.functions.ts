@@ -24,7 +24,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       throw new Error("Invalid plan");
     }
 
-    const priceId = data.billingPeriod === 'month' ? plan.stripe_price_id : plan.stripe_price_year_id;
+    const priceId = data.billingPeriod === 'month' ? plan.stripe_price_month_id : plan.stripe_price_year_id;
     
     if (!priceId) {
       throw new Error("Stripe Price ID not configured for this plan");
