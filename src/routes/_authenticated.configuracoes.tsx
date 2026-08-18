@@ -39,7 +39,20 @@ function SettingsPage() {
   const [newMaterial, setNewMaterial] = useState({ name: '', price_per_kg: '', color: '#f97316' });
 
   useEffect(() => {
-    if (settings) setForm(settings);
+    if (settings) {
+      setForm({
+        ...settings,
+        engine_version: settings.engine_version || 'v1',
+        tax_pct: settings.tax_pct?.toString() || '0',
+        setup_minutes: settings.setup_minutes?.toString() || '15',
+        post_processing_price_hour: settings.post_processing_price_hour?.toString() || '0',
+        layer_height: settings.layer_height?.toString() || '0.2',
+        nozzle_width: settings.nozzle_width?.toString() || '0.4',
+        walls: settings.walls?.toString() || '3',
+        volumetric_rate: settings.volumetric_rate?.toString() || '8.0',
+        time_calibration: settings.time_calibration?.toString() || '1.0'
+      });
+    }
   }, [settings]);
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
