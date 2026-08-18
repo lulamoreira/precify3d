@@ -2,9 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-// Middleware para verificar se o usuário é admin ou owner
-const requireAdminRole = async (context: any) => {
-  const { userId, supabase } = context;
+// Função para verificar se o usuário é admin ou owner de forma segura no servidor
+const checkAdminRole = async (userId: string, supabase: any) => {
   const { data: role } = await supabase.rpc('has_role', { 
     _user_id: userId, 
     _role: 'admin' 
@@ -20,7 +19,7 @@ const requireAdminRole = async (context: any) => {
 };
 
 export const createPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: any) => z.object({
     code: z.string().min(2).regex(/^[a-z0-9-]+$/, "Código deve ser minúsculo, sem espaços"),
     name: z.string().min(2),
@@ -34,18 +33,19 @@ export const createPlan = createServerFn({ method: "POST" })
     active: z.boolean().default(true),
   }).parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
 
-    let stripeProductId = null;
-    let stripePriceMonthId = null;
-    let stripePriceYearId = null;
+    let stripeProductId: string | null = null;
+    let stripePriceMonthId: string | null = null;
+    let stripePriceYearId: string | null = null;
 
     if (!data.is_free) {
       if (!stripeKey) throw new Error("Stripe não configurado (STRIPE_SECRET_KEY ausente)");
 
       try {
-        // 1. Criar Produto no Stripe
         const prodRes = await fetch('https://api.stripe.com/v1/products', {
           method: 'POST',
           headers: {
@@ -62,7 +62,6 @@ export const createPlan = createServerFn({ method: "POST" })
         if (product.error) throw new Error(`Stripe Product: ${product.error.message}`);
         stripeProductId = product.id;
 
-        // 2. Criar Preço Mensal
         const pMonthRes = await fetch('https://api.stripe.com/v1/prices', {
           method: 'POST',
           headers: {
@@ -70,7 +69,7 @@ export const createPlan = createServerFn({ method: "POST" })
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
-            product: stripeProductId,
+            product: stripeProductId!,
             unit_amount: Math.round(data.price_month * 100).toString(),
             currency: 'brl',
             'recurring[interval]': 'month',
@@ -80,7 +79,6 @@ export const createPlan = createServerFn({ method: "POST" })
         if (pMonth.error) throw new Error(`Stripe Price Month: ${pMonth.error.message}`);
         stripePriceMonthId = pMonth.id;
 
-        // 3. Criar Preço Anual
         const pYearRes = await fetch('https://api.stripe.com/v1/prices', {
           method: 'POST',
           headers: {
@@ -88,7 +86,7 @@ export const createPlan = createServerFn({ method: "POST" })
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
-            product: stripeProductId,
+            product: stripeProductId!,
             unit_amount: Math.round(data.price_year * 100).toString(),
             currency: 'brl',
             'recurring[interval]': 'year',
@@ -98,7 +96,6 @@ export const createPlan = createServerFn({ method: "POST" })
         if (pYear.error) throw new Error(`Stripe Price Year: ${pYear.error.message}`);
         stripePriceYearId = pYear.id;
       } catch (err: any) {
-        // Se falhou no Stripe, não salva no banco (Parte C-a)
         throw new Error(`Falha na integração com Stripe: ${err.message}`);
       }
     }
@@ -110,6 +107,7 @@ export const createPlan = createServerFn({ method: "POST" })
         stripe_product_id: stripeProductId,
         stripe_price_month_id: stripePriceMonthId,
         stripe_price_year_id: stripePriceYearId,
+        features: data.features as any,
       })
       .select()
       .single();
@@ -119,7 +117,7 @@ export const createPlan = createServerFn({ method: "POST" })
   });
 
 export const updatePlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: any) => z.object({
     id: z.string().uuid(),
     name: z.string().min(2),
@@ -133,11 +131,12 @@ export const updatePlan = createServerFn({ method: "POST" })
     migrate_subscribers: z.boolean().default(false),
   }).parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY || '';
     const { id, migrate_subscribers, ...updateData } = data;
 
-    // 1. Buscar plano atual
     const { data: currentPlan } = await supabase
       .from('plans')
       .select('*')
@@ -149,9 +148,7 @@ export const updatePlan = createServerFn({ method: "POST" })
     let newStripePriceMonthId = currentPlan.stripe_price_month_id;
     let newStripePriceYearId = currentPlan.stripe_price_year_id;
 
-    // 2. Verificar mudança de preços (Stripe prices são imutáveis)
     if (!currentPlan.is_free && stripeKey) {
-      // Mensal mudou?
       if (data.price_month !== currentPlan.price_month) {
         const res = await fetch('https://api.stripe.com/v1/prices', {
           method: 'POST',
@@ -160,7 +157,7 @@ export const updatePlan = createServerFn({ method: "POST" })
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
-            product: currentPlan.stripe_product_id,
+            product: currentPlan.stripe_product_id!,
             unit_amount: Math.round(data.price_month * 100).toString(),
             currency: 'brl',
             'recurring[interval]': 'month',
@@ -169,18 +166,16 @@ export const updatePlan = createServerFn({ method: "POST" })
         const price = await res.json();
         if (price.id) {
           newStripePriceMonthId = price.id;
-          // Registrar no histórico
           await supabase.from('plan_price_history').insert({
             plan_id: id,
-            old_price: currentPlan.price_month,
-            new_price: data.price_month,
-            billing_period: 'month',
-            stripe_price_id: currentPlan.stripe_price_month_id
+            price_month: data.price_month,
+            price_year: currentPlan.price_year,
+            stripe_price_month_id: currentPlan.stripe_price_month_id,
+            stripe_price_year_id: currentPlan.stripe_price_year_id
           });
         }
       }
 
-      // Anual mudou?
       if (data.price_year !== currentPlan.price_year) {
         const res = await fetch('https://api.stripe.com/v1/prices', {
           method: 'POST',
@@ -189,7 +184,7 @@ export const updatePlan = createServerFn({ method: "POST" })
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
-            product: currentPlan.stripe_product_id,
+            product: currentPlan.stripe_product_id!,
             unit_amount: Math.round(data.price_year * 100).toString(),
             currency: 'brl',
             'recurring[interval]': 'year',
@@ -200,10 +195,10 @@ export const updatePlan = createServerFn({ method: "POST" })
           newStripePriceYearId = price.id;
           await supabase.from('plan_price_history').insert({
             plan_id: id,
-            old_price: currentPlan.price_year,
-            new_price: data.price_year,
-            billing_period: 'year',
-            stripe_price_id: currentPlan.stripe_price_year_id
+            price_month: currentPlan.price_month,
+            price_year: data.price_year,
+            stripe_price_month_id: currentPlan.stripe_price_month_id,
+            stripe_price_year_id: currentPlan.stripe_price_year_id
           });
         }
       }
@@ -215,23 +210,21 @@ export const updatePlan = createServerFn({ method: "POST" })
         ...updateData,
         stripe_price_month_id: newStripePriceMonthId,
         stripe_price_year_id: newStripePriceYearId,
+        features: updateData.features as any,
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
 
     if (error) throw error;
-    
-    // TODO: Se migrate_subscribers for true, iterar assinaturas no Stripe e atualizar o price_id
-    // Isso seria feito via Edge Function ou Loop aqui se o tempo permitir, mas o requisito principal é o registro.
-
     return { success: true };
   });
 
 export const deletePlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .inputValidator((id: string) => z.string().uuid().parse(id))
   .handler(async ({ data: id, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
 
     const { data: plan } = await supabase.from('plans').select('is_free, code').eq('id', id).single();
     if (plan?.is_free) throw new Error("O plano gratuito não pode ser excluído.");
@@ -239,7 +232,7 @@ export const deletePlan = createServerFn({ method: "POST" })
     const { count } = await supabase
       .from('subscriptions')
       .select('*', { count: 'exact', head: true })
-      .eq('plan_code', plan?.code);
+      .eq('plan_code', plan?.code || '');
 
     if (count && count > 0) {
       throw new Error(`Este plano tem ${count} assinantes — desative em vez de excluir.`);
@@ -251,7 +244,7 @@ export const deletePlan = createServerFn({ method: "POST" })
   });
 
 export const createCoupon = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: any) => z.object({
     code: z.string().min(2).toUpperCase(),
     description: z.string().optional(),
@@ -264,12 +257,12 @@ export const createCoupon = createServerFn({ method: "POST" })
     expires_at: z.string().nullable(),
   }).parse(data))
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
 
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) throw new Error("Stripe não configurado");
 
-    // 1. Criar Coupon no Stripe
     const couponBody: any = {
       name: data.description || data.code,
       duration: data.duration,
@@ -301,7 +294,6 @@ export const createCoupon = createServerFn({ method: "POST" })
     const stripeCoupon = await coupRes.json();
     if (stripeCoupon.error) throw new Error(`Stripe Coupon: ${stripeCoupon.error.message}`);
 
-    // 2. Criar Promotion Code
     const promoRes = await fetch('https://api.stripe.com/v1/promotion_codes', {
       method: 'POST',
       headers: {
@@ -331,10 +323,12 @@ export const createCoupon = createServerFn({ method: "POST" })
   });
 
 export const toggleCouponActive = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .inputValidator((id: string) => z.string().uuid().parse(id))
   .handler(async ({ data: id, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
 
     const { data: coupon } = await supabase.from('coupons').select('*').eq('id', id).single();
@@ -358,10 +352,12 @@ export const toggleCouponActive = createServerFn({ method: "POST" })
   });
 
 export const reorderPlans = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .inputValidator((ids: string[]) => z.array(z.string().uuid()).parse(ids))
   .handler(async ({ data: ids, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
+
     for (let i = 0; i < ids.length; i++) {
       await supabase.from('plans').update({ sort_order: i }).eq('id', ids[i]);
     }
@@ -369,9 +365,11 @@ export const reorderPlans = createServerFn({ method: "POST" })
   });
 
 export const getCoupons = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth, requireAdminRole])
+  .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await checkAdminRole(userId, supabase);
+
     const { data, error } = await supabase
       .from('coupons')
       .select('*')
