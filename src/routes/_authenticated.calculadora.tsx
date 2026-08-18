@@ -73,16 +73,73 @@ function CalculatorPage() {
         marginPct: settings.margin.toString(),
         packaging: settings.packaging.toString(),
         platformFee: settings.platform_fee.toString(),
+        taxPct: settings.tax_pct?.toString() || '0',
+        setupMinutes: settings.setup_minutes?.toString() || '15',
+        postProcessingPriceHour: settings.post_processing_price_hour?.toString() || '0',
+        useV2: settings.engine_version === 'v2'
       }));
     }
   }, [settings, materials]);
 
   useEffect(() => {
     if (stlData) {
-      const weight = calcWeightFromSTL(stlData.volCm3, density, infill);
-      setForm(f => ({ ...f, weightG: weight.toString() }));
+      let weight = 0;
+      if (form.useV2 && settings) {
+        weight = estimateWeightV2(
+          stlData, 
+          density, 
+          infill, 
+          settings.walls, 
+          settings.layer_height, 
+          settings.nozzle_width
+        );
+        
+        const time = estimateTimeHours(stlData.volCm3, settings.volumetric_rate, settings.time_calibration);
+        const h = Math.floor(time);
+        const m = Math.round((time - h) * 60);
+        setForm(f => ({ ...f, weightG: weight.toString(), h: h.toString(), m: m.toString() }));
+      } else {
+        weight = calcWeightFromSTL(stlData.volCm3, density, infill);
+        setForm(f => ({ ...f, weightG: weight.toString() }));
+      }
     }
-  }, [stlData, infill, density]);
+  }, [stlData, infill, density, form.useV2, settings]);
+
+  const handleFile = async (file: File) => {
+    const ext = file.name.toLowerCase().split('.').pop();
+    setStlLoading(true);
+    setStlFileName(file.name);
+    
+    try {
+      const buffer = await file.arrayBuffer();
+      
+      if (ext === 'stl') {
+        const tris = parseSTLBuffer(buffer);
+        const stats = analyzeTriangles(tris);
+        setStlData(stats);
+        toast.success('Arquivo STL analisado com sucesso!');
+      } else if (ext === 'gcode') {
+        const text = new TextDecoder().decode(buffer);
+        const { weightG, timeHours } = parseGCode(text);
+        if (weightG) setForm(f => ({ ...f, weightG: weightG.toString() }));
+        if (timeHours) {
+          const h = Math.floor(timeHours);
+          const m = Math.round((timeHours - h) * 60);
+          setForm(f => ({ ...f, h: h.toString(), m: m.toString() }));
+        }
+        toast.success('G-code processado!');
+      } else if (ext === '3mf') {
+        // Simple 3MF parsing - just listing files for now as it needs complex XML parsing
+        // But we can at least detect it and warn
+        toast.info('Arquivo 3MF detectado. Estimativa manual sugerida.');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao processar o arquivo.');
+    } finally {
+      setStlLoading(false);
+    }
+  };
 
   const handleSTLFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.stl')) {
