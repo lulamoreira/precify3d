@@ -38,7 +38,20 @@ function AdminLayout() {
           >
             Usuários
           </Link>
+          <Link 
+            to={"/admin/presets" as any} 
+            className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
+          >
+            Impressoras
+          </Link>
+          <Link 
+            to={"/admin/tarifas" as any} 
+            className="px-4 py-1.5 text-sm rounded-md transition-colors [&.active]:bg-[#f97316] [&.active]:text-white text-gray-400 hover:text-white"
+          >
+            Tarifas
+          </Link>
         </div>
+
       </div>
       <Outlet />
     </div>
