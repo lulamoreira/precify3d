@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, MapPin, Phone, Mail, Loader2, Save, Building2, Palette, Upload, Hash } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/_authenticated/perfil')({
   component: ProfilePage,
